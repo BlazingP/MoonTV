@@ -13,7 +13,7 @@ services:
       - NEXT_PUBLIC_STORAGE_TYPE=redis
       - REDIS_URL=redis://moontv-redis:6379
       - NEXT_PUBLIC_ENABLE_REGISTER=false
-      - SITE_NAME=MoonTV
+      - SITE_NAME=BLAZING-TV
     networks:
       - moontv-network
     depends_on:
