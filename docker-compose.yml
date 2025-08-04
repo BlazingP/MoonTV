@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   moontv:
     image: ghcr.io/senshinya/moontv:latest
@@ -10,31 +8,8 @@ services:
     environment:
       - USERNAME=admin
       - PASSWORD=yezi
-      - NEXT_PUBLIC_STORAGE_TYPE=redis
-      - REDIS_URL=redis://moontv-redis:6379
+      - NEXT_PUBLIC_STORAGE_TYPE=localstorage
       - NEXT_PUBLIC_ENABLE_REGISTER=false
       - SITE_NAME=BLAZING-TV
-    networks:
-      - moontv-network
-    depends_on:
-      - moontv-redis
     volumes:
       - ./config.json:/app/config.json:ro
-
-  moontv-redis:
-    image: redis:7-alpine
-    container_name: moontv-redis
-    restart: unless-stopped
-    networks:
-      - moontv-network
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-
-volumes:
-  redis-data:
-    driver: local
-
-networks:
-  moontv-network:
-    driver: bridge

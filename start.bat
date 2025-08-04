@@ -21,13 +21,21 @@ echo ✅ 清理完成
 
 echo.
 echo [3/4] 拉取最新镜像...
-docker-compose pull
+echo 正在拉取 MoonTV 镜像...
+docker pull ghcr.io/senshinya/moontv:latest
 if %errorlevel% neq 0 (
-    echo ❌ 镜像拉取失败，请检查网络连接
+    echo ❌ MoonTV 镜像拉取失败，请检查网络连接
     pause
     exit /b 1
 )
-echo ✅ 镜像拉取完成
+echo 正在拉取 Redis 镜像...
+docker pull redis:7-alpine
+if %errorlevel% neq 0 (
+    echo ❌ Redis 镜像拉取失败，请检查网络连接
+    pause
+    exit /b 1
+)
+echo ✅ 所有镜像拉取完成
 
 echo.
 echo [4/4] 启动 MoonTV 服务...

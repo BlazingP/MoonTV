@@ -32,11 +32,17 @@ echo -e "${GREEN}✅ 清理完成${NC}"
 
 echo
 echo -e "${YELLOW}[3/4] 拉取最新镜像...${NC}"
-if ! docker-compose pull; then
-    echo -e "${RED}❌ 镜像拉取失败，请检查网络连接${NC}"
+echo "正在拉取 MoonTV 镜像..."
+if ! docker pull ghcr.io/senshinya/moontv:latest; then
+    echo -e "${RED}❌ MoonTV 镜像拉取失败，请检查网络连接${NC}"
     exit 1
 fi
-echo -e "${GREEN}✅ 镜像拉取完成${NC}"
+echo "正在拉取 Redis 镜像..."
+if ! docker pull redis:7-alpine; then
+    echo -e "${RED}❌ Redis 镜像拉取失败，请检查网络连接${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ 所有镜像拉取完成${NC}"
 
 echo
 echo -e "${YELLOW}[4/4] 启动 MoonTV 服务...${NC}"
