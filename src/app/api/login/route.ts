@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       // 未配置 PASSWORD 时直接放行，并设置 owner 权限
       if (!envPassword) {
         const response = NextResponse.json({ ok: true });
-        
+
         // 设置默认 owner 权限的 cookie
         const cookieValue = await generateAuthCookie(
           'admin',

@@ -1,4 +1,12 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: moontv-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
   moontv:
     build: .
     container_name: moontv
@@ -8,8 +16,14 @@ services:
     environment:
       - USERNAME=admin
       # - PASSWORD=yezi  # 注释掉密码以禁用登录验证（仅限本地使用）
-      - NEXT_PUBLIC_STORAGE_TYPE=localstorage
+      - NEXT_PUBLIC_STORAGE_TYPE=redis
+      - REDIS_URL=redis://redis:6379
       - NEXT_PUBLIC_ENABLE_REGISTER=false
       - SITE_NAME=BLAZING-TV
     volumes:
       - ./config.json:/app/config.json:ro
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:

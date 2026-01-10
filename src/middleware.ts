@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
   if (!process.env.PASSWORD) {
     // 如果没有设置密码，设置默认 owner 权限并放行（本地使用模式）
     const authInfo = getAuthInfoFromCookie(request);
-    
+
     if (!authInfo || !authInfo.role) {
       // 需要设置默认权限
       const response = NextResponse.next();
@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
       });
       const expires = new Date();
       expires.setDate(expires.getDate() + 365);
-      
+
       response.cookies.set('auth', encodeURIComponent(defaultAuth), {
         path: '/',
         expires,
@@ -36,10 +36,10 @@ export async function middleware(request: NextRequest) {
         httpOnly: false,
         secure: false,
       });
-      
+
       return response;
     }
-    
+
     return NextResponse.next();
   }
 
