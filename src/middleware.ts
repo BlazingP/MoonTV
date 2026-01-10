@@ -15,9 +15,32 @@ export async function middleware(request: NextRequest) {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
 
   if (!process.env.PASSWORD) {
-    // 如果没有设置密码，重定向到警告页面
-    const warningUrl = new URL('/warning', request.url);
-    return NextResponse.redirect(warningUrl);
+    // 如果没有设置密码，设置默认 owner 权限并放行（本地使用模式）
+    const authInfo = getAuthInfoFromCookie(request);
+    
+    if (!authInfo || !authInfo.role) {
+      // 需要设置默认权限
+      const response = NextResponse.next();
+      const defaultAuth = JSON.stringify({
+        username: 'admin',
+        role: 'owner',
+        timestamp: Date.now()
+      });
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 365);
+      
+      response.cookies.set('auth', encodeURIComponent(defaultAuth), {
+        path: '/',
+        expires,
+        sameSite: 'lax',
+        httpOnly: false,
+        secure: false,
+      });
+      
+      return response;
+    }
+    
+    return NextResponse.next();
   }
 
   // 从cookie获取认证信息

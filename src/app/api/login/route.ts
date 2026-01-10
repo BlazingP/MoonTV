@@ -73,17 +73,26 @@ export async function POST(req: NextRequest) {
     if (STORAGE_TYPE === 'localstorage') {
       const envPassword = process.env.PASSWORD;
 
-      // 未配置 PASSWORD 时直接放行
+      // 未配置 PASSWORD 时直接放行，并设置 owner 权限
       if (!envPassword) {
         const response = NextResponse.json({ ok: true });
+        
+        // 设置默认 owner 权限的 cookie
+        const cookieValue = await generateAuthCookie(
+          'admin',
+          undefined,
+          'owner',
+          false
+        );
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 365); // 1年过期
 
-        // 清除可能存在的认证cookie
-        response.cookies.set('auth', '', {
+        response.cookies.set('auth', cookieValue, {
           path: '/',
-          expires: new Date(0),
-          sameSite: 'lax', // 改为 lax 以支持 PWA
-          httpOnly: false, // PWA 需要客户端可访问
-          secure: false, // 根据协议自动设置
+          expires,
+          sameSite: 'lax',
+          httpOnly: false,
+          secure: false,
         });
 
         return response;

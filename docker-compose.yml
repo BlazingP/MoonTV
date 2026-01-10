@@ -1,13 +1,13 @@
 services:
   moontv:
-    image: ghcr.io/senshinya/moontv:latest
+    build: .
     container_name: moontv
     restart: unless-stopped
     ports:
       - '3000:3000'
     environment:
       - USERNAME=admin
-      - PASSWORD=yezi
+      # - PASSWORD=yezi  # 注释掉密码以禁用登录验证（仅限本地使用）
       - NEXT_PUBLIC_STORAGE_TYPE=localstorage
       - NEXT_PUBLIC_ENABLE_REGISTER=false
       - SITE_NAME=BLAZING-TV
