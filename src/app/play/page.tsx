@@ -27,6 +27,8 @@ import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 
+const PLAYER_CONTROLS_HIDE_DELAY = 2500;
+
 // 扩展 HTMLVideoElement 类型以支持 hls 属性
 declare global {
   interface HTMLVideoElement {
@@ -190,6 +192,7 @@ function PlayPageClient() {
   // 播放进度保存相关
   const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
+  const controlsHideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const artPlayerRef = useRef<any>(null);
   const artRef = useRef<HTMLDivElement | null>(null);
@@ -434,6 +437,52 @@ function PlayPageClient() {
     if (video.hasAttribute('disableRemotePlayback')) {
       video.removeAttribute('disableRemotePlayback');
     }
+  };
+
+  const clearPlayerControlsHideTimer = () => {
+    if (controlsHideTimerRef.current) {
+      clearTimeout(controlsHideTimerRef.current);
+      controlsHideTimerRef.current = null;
+    }
+  };
+
+  const hidePlayerControls = () => {
+    const player = artPlayerRef.current;
+    if (!player || player.paused || player.setting?.show) return;
+
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      artRef.current?.contains(activeElement)
+    ) {
+      activeElement.blur();
+    }
+
+    if (player.controls) {
+      player.controls.show = false;
+    }
+  };
+
+  const showPlayerControls = () => {
+    clearPlayerControlsHideTimer();
+
+    const player = artPlayerRef.current;
+    if (!player) return;
+
+    if (player.controls) {
+      player.controls.show = true;
+    }
+  };
+
+  const schedulePlayerControlsHide = (delay = PLAYER_CONTROLS_HIDE_DELAY) => {
+    showPlayerControls();
+
+    if (!artPlayerRef.current) return;
+
+    controlsHideTimerRef.current = setTimeout(() => {
+      controlsHideTimerRef.current = null;
+      hidePlayerControls();
+    }, delay);
   };
 
   // 去广告相关函数
@@ -927,6 +976,8 @@ function PlayPageClient() {
   // ---------------------------------------------------------------------------
   // 处理全局快捷键
   const handleKeyboardShortcuts = (e: KeyboardEvent) => {
+    let handled = false;
+
     // 忽略输入框中的按键事件
     if (
       (e.target as HTMLElement).tagName === 'INPUT' ||
@@ -934,11 +985,26 @@ function PlayPageClient() {
     )
       return;
 
+    const shouldScheduleControlsHide =
+      !!artPlayerRef.current &&
+      ((e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) ||
+        (!e.altKey &&
+          [
+            'ArrowLeft',
+            'ArrowRight',
+            'ArrowUp',
+            'ArrowDown',
+            ' ',
+            'f',
+            'F',
+          ].includes(e.key)));
+
     // Alt + 左箭头 = 上一集
     if (e.altKey && e.key === 'ArrowLeft') {
       if (detailRef.current && currentEpisodeIndexRef.current > 0) {
         handlePreviousEpisode();
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -949,6 +1015,7 @@ function PlayPageClient() {
       if (d && idx < d.episodes.length - 1) {
         handleNextEpisode();
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -957,6 +1024,7 @@ function PlayPageClient() {
       if (artPlayerRef.current && artPlayerRef.current.currentTime > 5) {
         artPlayerRef.current.currentTime -= 10;
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -968,6 +1036,7 @@ function PlayPageClient() {
       ) {
         artPlayerRef.current.currentTime += 10;
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -980,6 +1049,7 @@ function PlayPageClient() {
           artPlayerRef.current.volume * 100
         )}`;
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -992,6 +1062,7 @@ function PlayPageClient() {
           artPlayerRef.current.volume * 100
         )}`;
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -1000,6 +1071,7 @@ function PlayPageClient() {
       if (artPlayerRef.current) {
         artPlayerRef.current.toggle();
         e.preventDefault();
+        handled = true;
       }
     }
 
@@ -1008,7 +1080,12 @@ function PlayPageClient() {
       if (artPlayerRef.current) {
         artPlayerRef.current.fullscreen = !artPlayerRef.current.fullscreen;
         e.preventDefault();
+        handled = true;
       }
+    }
+
+    if (handled || shouldScheduleControlsHide) {
+      schedulePlayerControlsHide();
     }
   };
 
@@ -1196,6 +1273,7 @@ function PlayPageClient() {
 
     // 非WebKit浏览器且播放器已存在，使用switch方法切换
     if (!isWebkit && artPlayerRef.current) {
+      clearPlayerControlsHideTimer();
       artPlayerRef.current.switch = videoUrl;
       artPlayerRef.current.title = `${videoTitle} - 第${
         currentEpisodeIndex + 1
@@ -1212,6 +1290,7 @@ function PlayPageClient() {
 
     // WebKit浏览器或首次创建：销毁之前的播放器实例并创建新的
     if (artPlayerRef.current) {
+      clearPlayerControlsHideTimer();
       if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
         artPlayerRef.current.video.hls.destroy();
       }
@@ -1327,6 +1406,7 @@ function PlayPageClient() {
               try {
                 localStorage.setItem('enable_blockad', String(newVal));
                 if (artPlayerRef.current) {
+                  clearPlayerControlsHideTimer();
                   resumeTimeRef.current = artPlayerRef.current.currentTime;
                   if (
                     artPlayerRef.current.video &&
@@ -1430,6 +1510,7 @@ function PlayPageClient() {
       // 监听播放器事件
       artPlayerRef.current.on('ready', () => {
         setError(null);
+        schedulePlayerControlsHide();
       });
 
       artPlayerRef.current.on('video:volumechange', () => {
@@ -1476,6 +1557,7 @@ function PlayPageClient() {
 
         // 隐藏换源加载状态
         setIsVideoLoading(false);
+        schedulePlayerControlsHide(1500);
       });
 
       // 监听视频时间更新事件，实现跳过片头片尾
@@ -1555,7 +1637,24 @@ function PlayPageClient() {
         }
       });
 
+      artPlayerRef.current.on('play', () => {
+        schedulePlayerControlsHide();
+      });
+
+      artPlayerRef.current.on('click', () => {
+        schedulePlayerControlsHide();
+      });
+
+      artPlayerRef.current.on('video:playing', () => {
+        schedulePlayerControlsHide();
+      });
+
+      artPlayerRef.current.on('video:pause', () => {
+        showPlayerControls();
+      });
+
       artPlayerRef.current.on('pause', () => {
+        showPlayerControls();
         saveCurrentPlayProgress();
       });
 
@@ -1577,6 +1676,7 @@ function PlayPageClient() {
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
       }
+      clearPlayerControlsHideTimer();
     };
   }, []);
 
