@@ -1,11 +1,32 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+run_pnpm() {
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm "$@"
+  elif command -v corepack >/dev/null 2>&1; then
+    corepack pnpm "$@"
+  else
+    echo "pnpm not found. Install pnpm or enable Corepack before committing." >&2
+    exit 127
+  fi
+}
+
+run_lint_staged() {
+  if command -v npx >/dev/null 2>&1; then
+    npx lint-staged
+  elif command -v npm >/dev/null 2>&1; then
+    npm exec -- lint-staged
+  else
+    run_pnpm exec lint-staged
+  fi
+}
+
 # 生成版本号
-pnpm gen:version
+run_pnpm gen:version
 
 # 自动添加修改的版本文件
 git add src/lib/version.ts
 git add VERSION.txt
 
-npx lint-staged
+run_lint_staged
