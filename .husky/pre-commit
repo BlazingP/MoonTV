@@ -4,21 +4,15 @@
 run_pnpm() {
   if command -v pnpm >/dev/null 2>&1; then
     pnpm "$@"
+  elif command -v pnpm.cmd >/dev/null 2>&1; then
+    pnpm.cmd "$@"
+  elif command -v corepack.cmd >/dev/null 2>&1; then
+    corepack.cmd pnpm "$@"
   elif command -v corepack >/dev/null 2>&1; then
     corepack pnpm "$@"
   else
     echo "pnpm not found. Install pnpm or enable Corepack before committing." >&2
     exit 127
-  fi
-}
-
-run_lint_staged() {
-  if command -v npx >/dev/null 2>&1; then
-    npx lint-staged
-  elif command -v npm >/dev/null 2>&1; then
-    npm exec -- lint-staged
-  else
-    run_pnpm exec lint-staged
   fi
 }
 
@@ -29,4 +23,4 @@ run_pnpm gen:version
 git add src/lib/version.ts
 git add VERSION.txt
 
-run_lint_staged
+run_pnpm exec lint-staged
