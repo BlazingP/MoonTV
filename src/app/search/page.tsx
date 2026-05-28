@@ -245,40 +245,38 @@ function SearchPageClient() {
 
   return (
     <PageLayout activePath='/search'>
-      <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10'>
+      <div className='app-page mb-10 overflow-visible'>
         {/* 搜索框 */}
-        <div className='mb-8'>
+        <div className='mb-8 sm:mb-10'>
           <form onSubmit={handleSearch} className='max-w-2xl mx-auto'>
             <div className='relative'>
-              <Search className='absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500' />
+              <Search className='absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500' />
               <input
                 id='searchInput'
                 type='text'
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder='搜索电影、电视剧...'
-                className='w-full h-12 rounded-lg bg-gray-50/80 py-3 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white border border-gray-200/50 shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-700 dark:border-gray-700'
+                className='surface-glass-strong h-14 w-full rounded-2xl py-3 pl-12 pr-4 text-sm text-slate-800 placeholder-slate-400 shadow-none outline-none transition-all focus:border-emerald-400/70 focus:ring-4 focus:ring-emerald-500/10 dark:text-slate-100 dark:placeholder-slate-500'
               />
             </div>
           </form>
         </div>
 
         {/* 搜索结果或搜索历史 */}
-        <div className='max-w-[95%] mx-auto mt-12 overflow-visible'>
+        <div className='app-page-narrow mt-12 overflow-visible'>
           {isLoading ? (
             <div className='flex justify-center items-center h-40'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
+              <div className='h-10 w-10 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500'></div>
             </div>
           ) : showResults ? (
-            <section className='mb-12'>
+            <section className='media-section surface-glass mb-12'>
               {/* 标题 + 聚合开关 */}
-              <div className='mb-8 flex items-center justify-between'>
-                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                  搜索结果
-                </h2>
+              <div className='section-bar'>
+                <h2 className='section-title'>搜索结果</h2>
                 {/* 聚合开关 */}
-                <label className='flex items-center gap-2 cursor-pointer select-none'>
-                  <span className='text-sm text-gray-700 dark:text-gray-300'>
+                <label className='flex cursor-pointer select-none items-center gap-2 rounded-full border border-slate-200/70 bg-white/45 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/[0.04]'>
+                  <span className='text-sm font-medium text-slate-700 dark:text-slate-300'>
                     聚合
                   </span>
                   <div className='relative'>
@@ -290,15 +288,12 @@ function SearchPageClient() {
                         setViewMode(viewMode === 'agg' ? 'all' : 'agg')
                       }
                     />
-                    <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
-                    <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>
+                    <div className='h-5 w-9 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-500 dark:bg-slate-700'></div>
+                    <div className='absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4'></div>
                   </div>
                 </label>
               </div>
-              <div
-                key={`search-results-${viewMode}`}
-                className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'
-              >
+              <div key={`search-results-${viewMode}`} className='content-grid'>
                 {viewMode === 'agg'
                   ? aggregatedResults.map(([mapKey, group]) => {
                       return (
@@ -340,23 +335,21 @@ function SearchPageClient() {
                       </div>
                     ))}
                 {searchResults.length === 0 && (
-                  <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                    未找到相关结果
-                  </div>
+                  <div className='empty-state'>未找到相关结果</div>
                 )}
               </div>
             </section>
           ) : searchHistory.length > 0 ? (
             // 搜索历史
-            <section className='mb-12'>
-              <h2 className='mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200'>
+            <section className='media-section surface-glass mb-12'>
+              <h2 className='section-title mb-5 text-left'>
                 搜索历史
                 {searchHistory.length > 0 && (
                   <button
                     onClick={() => {
                       clearSearchHistory(); // 事件监听会自动更新界面
                     }}
-                    className='ml-3 text-sm text-gray-500 hover:text-red-500 transition-colors dark:text-gray-400 dark:hover:text-red-500'
+                    className='ml-3 text-sm font-medium text-slate-500 transition-colors hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400'
                   >
                     清空
                   </button>
@@ -372,7 +365,7 @@ function SearchPageClient() {
                           `/search?q=${encodeURIComponent(item.trim())}`
                         );
                       }}
-                      className='px-4 py-2 bg-gray-500/10 hover:bg-gray-300 rounded-full text-sm text-gray-700 transition-colors duration-200 dark:bg-gray-700/50 dark:hover:bg-gray-600 dark:text-gray-300'
+                      className='rounded-full border border-slate-200/70 bg-white/55 px-4 py-2 text-sm text-slate-700 transition-colors duration-200 hover:border-emerald-400/60 hover:bg-emerald-500/10 hover:text-emerald-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:text-emerald-300'
                     >
                       {item}
                     </button>
@@ -384,7 +377,7 @@ function SearchPageClient() {
                         e.preventDefault();
                         deleteSearchHistory(item); // 事件监听会自动更新界面
                       }}
-                      className='absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 bg-gray-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors'
+                      className='absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-400 text-[10px] text-white opacity-0 transition-colors hover:bg-red-500 group-hover:opacity-100'
                     >
                       <X className='w-3 h-3' />
                     </button>
@@ -399,7 +392,7 @@ function SearchPageClient() {
       {/* 返回顶部悬浮按钮 */}
       <button
         onClick={scrollToTop}
-        className={`fixed bottom-20 md:bottom-6 right-6 z-[500] w-12 h-12 bg-green-500/90 hover:bg-green-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out flex items-center justify-center group ${
+        className={`fixed bottom-24 right-6 z-[500] flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/95 text-white shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out hover:bg-emerald-500 md:bottom-6 group ${
           showBackToTop
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-4 pointer-events-none'

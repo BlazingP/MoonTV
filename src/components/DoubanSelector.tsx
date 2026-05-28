@@ -217,12 +217,12 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     return (
       <div
         ref={containerRef}
-        className='relative inline-flex bg-gray-200/60 rounded-full p-0.5 sm:p-1 dark:bg-gray-700/60 backdrop-blur-sm'
+        className='relative inline-flex rounded-full border border-slate-200/70 bg-white/45 p-0.5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-1'
       >
         {/* 滑动的白色背景指示器 */}
         {indicatorStyle.width > 0 && (
           <div
-            className='absolute top-0.5 bottom-0.5 sm:top-1 sm:bottom-1 bg-white dark:bg-gray-500 rounded-full shadow-sm transition-all duration-300 ease-out'
+            className='absolute bottom-0.5 top-0.5 rounded-full bg-white shadow-sm transition-all duration-300 ease-out dark:bg-white/12 sm:bottom-1 sm:top-1'
             style={{
               left: `${indicatorStyle.left}px`,
               width: `${indicatorStyle.width}px`,
@@ -239,10 +239,10 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
                 buttonRefs.current[index] = el;
               }}
               onClick={() => onChange(option.value)}
-              className={`relative z-10 px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ${
+              className={`relative z-10 whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium transition-all duration-200 sm:px-4 sm:py-2 sm:text-sm ${
                 isActive
-                  ? 'text-gray-900 dark:text-gray-100 cursor-default'
-                  : 'text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer'
+                  ? 'cursor-default text-emerald-800 dark:text-emerald-200'
+                  : 'cursor-pointer text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
               {option.label}
@@ -260,7 +260,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         <div className='space-y-3 sm:space-y-4'>
           {/* 一级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+            <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
               分类
             </span>
             <div className='overflow-x-auto'>
@@ -275,7 +275,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
 
           {/* 二级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-            <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+            <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
               地区
             </span>
             <div className='overflow-x-auto'>
@@ -293,7 +293,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       {/* 电视剧类型 - 只显示一级选择器 */}
       {type === 'tv' && (
         <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+          <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
             类型
           </span>
           <div className='overflow-x-auto'>
@@ -310,7 +310,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       {/* 综艺类型 - 只显示一级选择器 */}
       {type === 'show' && (
         <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-          <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
+          <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
             类型
           </span>
           <div className='overflow-x-auto'>

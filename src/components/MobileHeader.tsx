@@ -13,29 +13,24 @@ interface MobileHeaderProps {
 
 const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
   const { siteName } = useSite();
+
   return (
-    <header className='md:hidden relative w-full bg-white/70 backdrop-blur-xl border-b border-gray-200/50 shadow-sm dark:bg-gray-900/70 dark:border-gray-700/50'>
-      <div className='h-12 flex items-center justify-between px-4'>
-        {/* 左侧：返回按钮和设置按钮 */}
-        <div className='flex items-center gap-2'>
+    <header className='surface-glass-strong sticky top-0 z-[650] w-full rounded-b-2xl border-x-0 border-t-0 md:hidden'>
+      <div className='flex h-14 items-center justify-between gap-3 px-4'>
+        <div className='flex min-w-0 items-center gap-2'>
           {showBackButton && <BackButton />}
+          <Link
+            href='/'
+            className='truncate bg-gradient-to-r from-emerald-700 to-emerald-500 bg-clip-text text-2xl font-black tracking-tight text-transparent transition-opacity hover:opacity-80 dark:from-emerald-300 dark:to-emerald-500'
+          >
+            {siteName}
+          </Link>
         </div>
 
-        {/* 右侧按钮 */}
-        <div className='flex items-center gap-2'>
+        <div className='flex shrink-0 items-center gap-2'>
           <ThemeToggle />
           <UserMenu />
         </div>
-      </div>
-
-      {/* 中间：Logo（绝对居中） */}
-      <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
-        <Link
-          href='/'
-          className='text-2xl font-bold text-green-600 tracking-tight hover:opacity-80 transition-opacity'
-        >
-          {siteName}
-        </Link>
       </div>
     </header>
   );

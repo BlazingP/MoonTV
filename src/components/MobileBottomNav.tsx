@@ -70,15 +70,14 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
 
   return (
     <nav
-      className='md:hidden fixed left-0 right-0 z-[600] bg-white/90 backdrop-blur-xl border-t border-gray-200/50 overflow-hidden dark:bg-gray-900/80 dark:border-gray-700/50'
+      className='surface-glass-strong fixed bottom-0 left-3 right-3 z-[600] mb-3 overflow-hidden rounded-2xl md:hidden'
       style={{
         /* 紧贴视口底部，同时在内部留出安全区高度 */
-        bottom: 0,
         paddingBottom: 'env(safe-area-inset-bottom)',
         minHeight: 'calc(3.5rem + env(safe-area-inset-bottom))',
       }}
     >
-      <ul className='flex items-center overflow-x-auto scrollbar-hide'>
+      <ul className='flex items-center overflow-x-auto scrollbar-hide px-1 py-1'>
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -89,20 +88,24 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
             >
               <Link
                 href={item.href}
-                className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs'
+                className={`flex h-14 w-full flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors ${
+                  active
+                    ? 'bg-emerald-500/12'
+                    : 'hover:bg-slate-900/5 dark:hover:bg-white/5'
+                }`}
               >
                 <item.icon
                   className={`h-6 w-6 ${
                     active
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-gray-500 dark:text-gray-400'
+                      ? 'text-emerald-700 dark:text-emerald-300'
+                      : 'text-slate-500 dark:text-slate-400'
                   }`}
                 />
                 <span
                   className={
                     active
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-gray-600 dark:text-gray-300'
+                      ? 'font-semibold text-emerald-700 dark:text-emerald-300'
+                      : 'text-slate-600 dark:text-slate-300'
                   }
                 >
                   {item.label}
