@@ -2,5 +2,6 @@ cd C:\python\MoonTV
 
 git pull
 
-docker compose build moontv
-docker compose up -d --no-deps --force-recreate moontv
+docker compose up -d redis
+docker compose build --no-cache moontv
+docker compose up -d --force-recreate moontv
