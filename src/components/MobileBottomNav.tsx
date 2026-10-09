@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Clover, Film, Home, Search, Star, Tv } from 'lucide-react';
+import { Clover, Film, Home, Search, Sparkles, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -23,6 +23,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const [navItems, setNavItems] = useState([
     { icon: Home, label: '首页', href: '/' },
     { icon: Search, label: '搜索', href: '/search' },
+    { icon: Sparkles, label: '动漫kazumi', href: '/kazumi' },
     {
       icon: Film,
       label: '电影',
@@ -88,6 +89,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
             >
               <Link
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 className={`flex h-14 w-full flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors ${
                   active
                     ? 'bg-emerald-500/12'

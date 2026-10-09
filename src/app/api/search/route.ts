@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
+import { isKazumiApi } from '@/lib/kazumi';
 import { yellowWords } from '@/lib/yellow';
 
 export const runtime = 'edge';
@@ -9,6 +10,7 @@ export const runtime = 'edge';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
+  const kazumiOnly = searchParams.get('scope') === 'kazumi';
 
   if (!query) {
     const cacheTime = await getCacheTime();
@@ -25,7 +27,9 @@ export async function GET(request: Request) {
   }
 
   const config = await getConfig();
-  const apiSites = config.SourceConfig.filter((site) => !site.disabled);
+  const apiSites = config.SourceConfig.filter(
+    (site) => !site.disabled && (!kazumiOnly || isKazumiApi(site.api))
+  );
   const searchPromises = apiSites.map((site) => searchFromApi(site, query));
 
   try {
@@ -40,12 +44,21 @@ export async function GET(request: Request) {
     const cacheTime = await getCacheTime();
 
     return NextResponse.json(
-      { results: flattenedResults },
+      {
+        results: flattenedResults,
+        ...(kazumiOnly ? { sourcesConfigured: apiSites.length > 0 } : {}),
+      },
       {
         headers: {
-          'Cache-Control': `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
-          'CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
-          'Vercel-CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+          'Cache-Control': kazumiOnly
+            ? 'private, no-store'
+            : `public, max-age=${cacheTime}, s-maxage=${cacheTime}`,
+          ...(!kazumiOnly
+            ? {
+                'CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+                'Vercel-CDN-Cache-Control': `public, s-maxage=${cacheTime}`,
+              }
+            : {}),
         },
       }
     );
