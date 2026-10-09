@@ -1,0 +1,43 @@
+# Optional overlay: docker compose --env-file .env.kazumi -f docker-compose.yml -f docker-compose.kazumi.yml up -d --build
+services:
+  moontv:
+    environment:
+      - KAZUMI_BRIDGE_URL=http://kazumi-bridge:8787
+    volumes:
+      - ./config.kazumi.json:/app/config.json:ro
+    depends_on:
+      kazumi-bridge:
+        condition: service_healthy
+
+  kazumi-bridge:
+    build: ./services/kazumi-bridge
+    restart: unless-stopped
+    init: true
+    environment:
+      KAZUMI_SECRET: ${KAZUMI_SECRET:?Run node scripts/setup-kazumi.mjs first}
+      KAZUMI_PUBLIC_BASE: ${KAZUMI_PUBLIC_BASE:?Set the externally reachable MoonTV URL}
+      KAZUMI_BROWSER: ${KAZUMI_BROWSER:-true}
+    # No published port: the CMS API is accessible only within Docker's network.
+    expose:
+      - '8787'
+    volumes:
+      - ./services/kazumi-bridge/rules:/app/rules:ro
+    shm_size: '256mb'
+    mem_limit: 1g
+    cpus: 1.5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

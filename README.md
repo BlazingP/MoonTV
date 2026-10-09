@@ -282,6 +282,10 @@ MoonTV 支持标准的苹果 CMS V10 API 格式。
 
 ## AndroidTV 使用
 
+### 可选：Kazumi 番剧来源
+
+`Brunch-1` 可通过独立 Docker 适配服务读取 Kazumi XPath 规则。支持范围、配置生成、执行主机部署和回滚请见 [Kazumi 接入说明](services/kazumi-bridge/README.md)。此功能需显式启用，原有视频源保持原来的运行方式。
+
 目前该项目可以配合 [OrionTV](https://github.com/zimplexing/OrionTV) 在 Android TV 上使用，可以直接作为 OrionTV 后端
 
 暂时收藏夹与播放记录和网页端隔离，后续会支持同步用户数据

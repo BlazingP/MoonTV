@@ -1,4 +1,5 @@
 import { API_CONFIG, ApiSite, getConfig } from '@/lib/config';
+import { isKazumiApi } from '@/lib/kazumi';
 import { SearchResult } from '@/lib/types';
 import { cleanHtmlTags } from '@/lib/utils';
 
@@ -27,7 +28,10 @@ export async function searchFromApi(
 
     // 添加超时处理
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      isKazumiApi(apiSite.api) ? 25000 : 8000
+    );
 
     const response = await fetch(apiUrl, {
       headers: API_CONFIG.search.headers,
@@ -201,7 +205,10 @@ export async function getDetailFromApi(
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    isKazumiApi(apiSite.api) ? 25000 : 10000
+  );
 
   const response = await fetch(detailUrl, {
     headers: API_CONFIG.detail.headers,

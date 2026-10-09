@@ -140,6 +140,10 @@ function handleAuthFailure(
 
 // 判断是否需要跳过认证的路径
 function shouldSkipAuth(pathname: string): boolean {
+  // The sidecar validates the HMAC capability on every media request. Native
+  // TV players do not carry MoonTV cookies. Other Kazumi routes remain private.
+  if (pathname.startsWith('/api/kazumi/media/')) return true;
+
   const skipPaths = [
     '/_next',
     '/favicon.ico',
