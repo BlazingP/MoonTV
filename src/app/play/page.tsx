@@ -190,7 +190,6 @@ function PlayPageClient() {
   >('initing');
 
   // 播放进度保存相关
-  const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
   const controlsHideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -944,7 +943,7 @@ function PlayPageClient() {
   const handleEpisodeChange = (episodeNumber: number) => {
     if (episodeNumber >= 0 && episodeNumber < totalEpisodes) {
       // 在更换集数前保存当前播放进度
-      if (artPlayerRef.current && artPlayerRef.current.paused) {
+      if (artPlayerRef.current) {
         saveCurrentPlayProgress();
       }
       setCurrentEpisodeIndex(episodeNumber);
@@ -1110,11 +1109,19 @@ function PlayPageClient() {
     const currentTime = player.currentTime || 0;
     const duration = player.duration || 0;
 
-    // 如果播放时间太短（少于5秒）或者视频时长无效，不保存
-    if (currentTime < 1 || !duration) {
+    // 只有实际播放满 1 秒且时长有效才创建记录；初始化事件不占用保存间隔。
+    if (
+      !Number.isFinite(currentTime) ||
+      currentTime < 1 ||
+      !Number.isFinite(duration) ||
+      duration <= 0
+    ) {
       return;
     }
 
+    // 在有效保存开始时限流，避免等待数据库响应期间重复提交。
+    const saveStartedAt = Date.now();
+    lastSaveTimeRef.current = saveStartedAt;
     try {
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
         title: videoTitleRef.current,
@@ -1129,7 +1136,6 @@ function PlayPageClient() {
         search_title: searchTitle,
       });
 
-      lastSaveTimeRef.current = Date.now();
       console.log('播放进度已保存:', {
         title: videoTitleRef.current,
         episode: currentEpisodeIndexRef.current + 1,
@@ -1137,6 +1143,9 @@ function PlayPageClient() {
         progress: `${Math.floor(currentTime)}/${Math.floor(duration)}`,
       });
     } catch (err) {
+      if (lastSaveTimeRef.current === saveStartedAt) {
+        lastSaveTimeRef.current = 0; // 失败后允许下一个进度事件重试。
+      }
       console.error('保存播放进度失败:', err);
     }
   };
@@ -1156,21 +1165,14 @@ function PlayPageClient() {
 
     // 添加事件监听器
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       // 清理事件监听器
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [currentEpisodeIndex, detail, artPlayerRef.current]);
-
-  // 清理定时器
-  useEffect(() => {
-    return () => {
-      if (saveIntervalRef.current) {
-        clearInterval(saveIntervalRef.current);
-      }
     };
   }, []);
 
@@ -1541,6 +1543,7 @@ function PlayPageClient() {
         resumeTimeRef.current = null;
 
         setTimeout(() => {
+          if (!artPlayerRef.current || artPlayerRef.current.isDestroy) return;
           if (
             Math.abs(artPlayerRef.current.volume - lastVolumeRef.current) > 0.01
           ) {
@@ -1615,6 +1618,7 @@ function PlayPageClient() {
 
       // 监听视频播放结束事件，自动播放下一集
       artPlayerRef.current.on('video:ended', () => {
+        saveCurrentPlayProgress();
         const d = detailRef.current;
         const idx = currentEpisodeIndexRef.current;
         if (d && d.episodes && idx < d.episodes.length - 1) {
@@ -1635,7 +1639,6 @@ function PlayPageClient() {
         }
         if (now - lastSaveTimeRef.current > interval) {
           saveCurrentPlayProgress();
-          lastSaveTimeRef.current = now;
         }
       });
 
@@ -1653,11 +1656,11 @@ function PlayPageClient() {
 
       artPlayerRef.current.on('video:pause', () => {
         showPlayerControls();
+        saveCurrentPlayProgress();
       });
 
       artPlayerRef.current.on('pause', () => {
         showPlayerControls();
-        saveCurrentPlayProgress();
       });
 
       if (artPlayerRef.current?.video) {
@@ -1672,13 +1675,15 @@ function PlayPageClient() {
     }
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
-  // 当组件卸载时清理定时器
+  // 站内返回首页不会触发 beforeunload，必须在播放器销毁前读取并补存进度。
   useEffect(() => {
     return () => {
-      if (saveIntervalRef.current) {
-        clearInterval(saveIntervalRef.current);
-      }
+      saveCurrentPlayProgress();
       clearPlayerControlsHideTimer();
+      const player = artPlayerRef.current;
+      artPlayerRef.current = null;
+      player?.video?.hls?.destroy();
+      player?.destroy();
     };
   }, []);
 

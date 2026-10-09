@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, Play, Search, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, useEffect, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useRef, useState } from 'react';
 
 import {
   KAZUMI_TAGS,
@@ -63,6 +63,12 @@ function CatalogView({ tag, query }: { tag: string; query: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [manualLoad, setManualLoad] = useState(false);
+
+  useEffect(() => {
+    setManualLoad(typeof IntersectionObserver === 'undefined');
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,6 +100,33 @@ function CatalogView({ tag, query }: { tag: string; query: string }) {
     })();
     return () => controller.abort();
   }, [tag, query, page, retry]);
+
+  useEffect(() => {
+    if (
+      !hasMore ||
+      loading ||
+      error ||
+      !loadMoreRef.current ||
+      typeof IntersectionObserver === 'undefined'
+    )
+      return;
+    let requested = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (requested || !entries.some((entry) => entry.isIntersecting)) return;
+        requested = true;
+        observer.disconnect();
+        setLoading(true);
+        setPage((value) => value + 1);
+      },
+      { rootMargin: '300px 0px', threshold: 0 }
+    );
+    observer.observe(loadMoreRef.current);
+    return () => {
+      requested = true;
+      observer.disconnect();
+    };
+  }, [hasMore, loading, error]);
 
   return (
     <section
@@ -145,12 +178,21 @@ function CatalogView({ tag, query }: { tag: string; query: string }) {
           })}
         </div>
       )}
-      <div className='mt-10 flex flex-col items-center gap-4 text-center'>
+      <div
+        ref={loadMoreRef}
+        className='mt-10 flex min-h-[64px] flex-col items-center gap-4 text-center'
+      >
         <p role='status' className='text-sm text-slate-500 dark:text-slate-400'>
           {loading
             ? '正在加载番剧…'
             : !error && !items.length
             ? '没有找到相关番剧，试试其他分类或关键词。'
+            : !error && items.length
+            ? hasMore
+              ? manualLoad
+                ? '点击下方按钮加载更多'
+                : '继续向下滚动，自动加载更多'
+              : '已经到底了'
             : ''}
         </p>
         {error && (
@@ -166,7 +208,7 @@ function CatalogView({ tag, query }: { tag: string; query: string }) {
             </button>
           </>
         )}
-        {!error && hasMore && (
+        {!error && hasMore && manualLoad && (
           <button
             disabled={loading}
             className={buttonStyle}

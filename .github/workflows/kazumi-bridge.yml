@@ -26,6 +26,7 @@ jobs:
       - run: python -m pip install -r services/kazumi-bridge/requirements.txt
       - run: python -m unittest discover -s services/kazumi-bridge/tests -v
       - run: node --test scripts/test-kazumi-proxy.cjs scripts/test-kazumi-catalog.cjs
+      - run: pnpm exec jest src/app/play/__tests__/history.test.tsx src/app/kazumi/__tests__/scroll.test.tsx --runInBand
       - run: pnpm gen:runtime && pnpm typecheck
       - run: pnpm exec next lint --file src/lib/kazumi.ts --file src/lib/kazumi-catalog.ts --file src/lib/downstream.ts --file 'src/app/api/kazumi/[...path]/route.ts' --file src/app/api/kazumi/catalog/route.ts --file src/app/api/search/route.ts --file src/app/kazumi/page.tsx --file src/components/Sidebar.tsx --file src/components/MobileBottomNav.tsx
       - run: node scripts/setup-kazumi.mjs http://localhost:3000
