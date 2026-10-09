@@ -495,6 +495,7 @@ export async function savePlayRecord(
     try {
       const res = await fetch('/api/playrecords', {
         method: 'POST',
+        keepalive: true,
         headers: {
           'Content-Type': 'application/json',
         },
