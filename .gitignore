@@ -43,3 +43,10 @@ sitemap-*.xml
 # generated files
 src/lib/runtime.ts
 public/manifest.json
+
+# Local Kazumi deployment configuration and Python caches
+.env.kazumi
+config.kazumi.json
+__pycache__/
+*.pyc
+.venv/
