@@ -2,7 +2,16 @@
 
 'use client';
 
-import { Clover, Film, Home, Menu, Search, Star, Tv } from 'lucide-react';
+import {
+  Clover,
+  Film,
+  Home,
+  Menu,
+  Search,
+  Sparkles,
+  Star,
+  Tv,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -125,6 +134,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   };
 
   const [menuItems, setMenuItems] = useState([
+    {
+      icon: Sparkles,
+      label: '动漫kazumi',
+      href: '/kazumi',
+    },
     {
       icon: Film,
       label: '电影',
@@ -254,6 +268,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                     <Link
                       key={item.label}
                       href={item.href}
+                      aria-label={item.label}
+                      aria-current={isActive ? 'page' : undefined}
+                      title={isCollapsed ? item.label : undefined}
                       onClick={() => setActive(item.href)}
                       data-active={isActive}
                       className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 text-sm text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/12 data-[active=true]:font-medium data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${

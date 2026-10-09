@@ -669,7 +669,9 @@ function PlayPageClient() {
       // 根据搜索词获取全部源信息
       try {
         const response = await fetch(
-          `/api/search?q=${encodeURIComponent(query.trim())}`
+          `/api/search?q=${encodeURIComponent(query.trim())}${
+            searchParams.get('scope') === 'kazumi' ? '&scope=kazumi' : ''
+          }`
         );
         if (!response.ok) {
           throw new Error('搜索失败');

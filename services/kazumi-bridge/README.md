@@ -2,6 +2,18 @@
 
 独立的 Python 适配服务读取 Kazumi XPath 规则，输出 MoonTV 支持的苹果 CMS V10 格式。MoonTV 原有来源继续使用原来的接口。新增的媒体入口 `/api/kazumi/media/…` 转发到 Docker 内网的适配服务，电视不需要访问 Docker 容器名称或内部端口。
 
+## 动漫 kazumi 页面
+
+左侧导航和移动端底部导航新增 **动漫 kazumi**（`/kazumi`）：
+
+- 默认显示与 Kazumi「热门番组」同源的 Bangumi 动漫趋势榜，提供海报、评分、分类、目录搜索与加载更多。
+- 热门榜使用 `next.bgm.tv/p1/trending/subjects?type=2`；分类和目录搜索使用 `api.bgm.tv/v0/search/subjects`，仅请求动画。分类按评分排名分页，避免随机抽取导致重复。
+- 点击番剧后，在已启用的 Kazumi 规则源中查找播放资源；中文名无结果时尝试原名，也可以手动修改搜索词。选定资源后进入 MoonTV 原有播放器，后续换源搜索保持 Kazumi 范围。
+- Bangumi 条目 ID 与播放源 ID 分开处理。目录可见不代表规则源一定有资源；未配置播放源、空结果和网络失败分别提示。
+- 不需要安装或嵌入 Kazumi 客户端。目录使用服务端同源接口，5 分钟缓存；沿用 MoonTV 登录验证。无需新增环境变量，更新代码并使用原 Kazumi Compose 命令重建即可。
+
+内容来源核对：[Kazumi 热门页逻辑](https://github.com/Predidit/Kazumi/blob/7b19c307e042dfb8863d647ce965f69fd1be29d9/lib/pages/popular/popular_controller.dart)、[Bangumi API 调用](https://github.com/Predidit/Kazumi/blob/7b19c307e042dfb8863d647ce965f69fd1be29d9/lib/request/apis/bangumi_api.dart)。页面采用 MoonTV 原有样式，未复制 Kazumi 的 Flutter UI 或个人收藏数据。
+
 ## 本次支持范围
 
 - XPath GET / POST 搜索、相对选择器、剧集和多条线路。
@@ -27,6 +39,14 @@
    ```
 
    会生成 `.env.kazumi`（随机签名密钥）和 `config.kazumi.json`（保留原来源并添加 Kazumi），不覆盖原 `config.json`，也不覆盖已有生成配置。只有这两个文件在本地生成，它们已加入 `.gitignore`。
+
+   执行主机没有 Node.js 时，可在仓库根目录使用临时 Node 容器生成配置（PowerShell，仍需替换公开地址）：
+
+   ```powershell
+   docker run --rm --mount "type=bind,source=$($PWD.Path),target=/workspace" --workdir /workspace node:20-alpine node scripts/setup-kazumi.mjs https://tv.example.com
+   ```
+
+   已完成初次接入的主机只需要拉取新代码并重建，不必重新生成上述两个文件。
 
    **妥善保留 `.env.kazumi` 的密钥。** 它签名作品 ID 和媒体链接，重建容器不应更换；主动更换会使旧的 Kazumi 收藏 ID 和播放链接失效，需重新搜索。
 
@@ -83,7 +103,7 @@
 ```bash
 python -m pip install -r services/kazumi-bridge/requirements.txt
 python -m unittest discover -s services/kazumi-bridge/tests -v
-node --test scripts/test-kazumi-proxy.cjs
+node --test scripts/test-kazumi-proxy.cjs scripts/test-kazumi-catalog.cjs
 pnpm gen:runtime
 pnpm typecheck
 ```
