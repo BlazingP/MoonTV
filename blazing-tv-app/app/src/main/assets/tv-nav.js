@@ -66,6 +66,13 @@
       '.tv-focus{outline:3px solid #ff6a00 !important;outline-offset:-3px !important;' +
       'box-shadow:0 0 0 3px rgba(255,106,0,.35),0 0 18px rgba(255,106,0,.55) !important;' +
       'border-radius:8px;transition:box-shadow .12s ease-out;}' +
+      // 全屏播放时不显示焦点框，否则画面四周会套一圈橙色边。
+      // 选择器列表里只要有一个不被支持整条规则就会失效，所以带前缀的单独一条
+      '.tv-focus:fullscreen,:fullscreen .tv-focus,' +
+      '.art-fullscreen.tv-focus,.art-fullscreen-web.tv-focus,' +
+      '.art-fullscreen .tv-focus,.art-fullscreen-web .tv-focus' +
+      '{outline:none !important;box-shadow:none !important;}' +
+      '.tv-focus:-webkit-full-screen{outline:none !important;box-shadow:none !important;}' +
       '#tv-osd{position:fixed;left:50%;top:12%;transform:translateX(-50%);z-index:2147483647;' +
       'padding:10px 22px;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;' +
       'font:600 22px/1.2 system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .15s;}' +
