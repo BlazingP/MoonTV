@@ -6,6 +6,10 @@
     <string name="menu_reload">刷新页面</string>
     <string name="menu_home">回到首页</string>
     <string name="menu_server">修改服务器地址</string>
+    <string name="menu_ui_scale">界面大小</string>
+    <string name="ui_scale_title">界面大小（越小，一屏显示越多）</string>
+    <string name="ui_scale_default">%1$d%%（默认）</string>
+    <string name="ui_scale_option">%1$d%%</string>
     <string name="server_hint">例如 http://192.168.0.200:3000</string>
     <string name="server_invalid">地址必须以 http:// 或 https:// 开头</string>
     <string name="ok">确定</string>

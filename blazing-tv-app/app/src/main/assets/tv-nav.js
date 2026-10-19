@@ -501,4 +501,83 @@
   ['play', 'playing', 'pause', 'ended', 'emptied'].forEach(function (type) {
     document.addEventListener(type, reportPlaying, true);
   });
+
+  // ------------------------------------------------------------ 界面大小
+  // 电视上网页按 960 CSS 像素宽排版，海报显得很大。把 viewport 宽度调大后，
+  // WebView 会整体缩小铺满屏幕：例如 80% 按 1200 像素宽排版，一屏能放更多内容。
+  var MIN_UI_SCALE = 50;
+  var FULL_UI_SCALE = 100;
+  var FALLBACK_SCREEN_WIDTH = 960;
+  var VIEWPORT_SELECTOR = 'meta[name="viewport"]';
+  var ORIGINAL_ATTR = 'data-tv-original';
+  var uiScale = normalizeUiScale(readUiScale());
+
+  function readUiScale() {
+    try {
+      return window.TvBridge ? window.TvBridge.getUiScale() : FULL_UI_SCALE;
+    } catch (e) {
+      return FULL_UI_SCALE;
+    }
+  }
+
+  function normalizeUiScale(value) {
+    var n = Number(value);
+    return n >= MIN_UI_SCALE && n <= FULL_UI_SCALE ? n : FULL_UI_SCALE;
+  }
+
+  /** 返回要写入的 viewport；100% 时返回 null，表示恢复网页原本的设置。 */
+  function scaledViewport(scale) {
+    if (scale >= FULL_UI_SCALE) return null;
+    var base = screen.width || FALLBACK_SCREEN_WIDTH;
+    return (
+      'width=' +
+      Math.round((base * FULL_UI_SCALE) / scale) +
+      ', viewport-fit=cover'
+    );
+  }
+
+  /** 改写所有 viewport meta；内容相同就不动，避免和下面的 MutationObserver 互相触发。 */
+  function applyViewport() {
+    var head = document.head;
+    if (!head) return;
+    var scaled = scaledViewport(uiScale);
+    var metas = head.querySelectorAll(VIEWPORT_SELECTOR);
+    if (!metas.length && scaled) {
+      var meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.setAttribute(ORIGINAL_ATTR, 'width=device-width, initial-scale=1');
+      head.appendChild(meta);
+      metas = [meta];
+    }
+    for (var i = 0; i < metas.length; i++) {
+      if (!metas[i].hasAttribute(ORIGINAL_ATTR)) {
+        metas[i].setAttribute(ORIGINAL_ATTR, metas[i].content);
+      }
+      var target = scaled || metas[i].getAttribute(ORIGINAL_ATTR);
+      if (metas[i].content !== target) metas[i].content = target;
+    }
+  }
+
+  function watchViewport() {
+    applyViewport();
+    // Next.js 切换路由时可能重写 <head>，改回来时重新套用
+    new MutationObserver(applyViewport).observe(document.head, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['content'],
+    });
+  }
+
+  if (document.head) watchViewport();
+  else document.addEventListener('DOMContentLoaded', watchViewport);
+
+  window.__tvApplyUiScale = function (scale) {
+    uiScale = normalizeUiScale(scale);
+    applyViewport();
+    if (isAlive(current))
+      setTimeout(function () {
+        ensureVisible(current);
+      }, 300);
+  };
 })();

@@ -13,6 +13,8 @@ final class TvBridge {
         /** 仅本地错误页允许调用，Host 负责校验当前页面来源。 */
         void onRetry();
         void onSetServer(String url);
+        /** 当前界面大小百分比；SharedPreferences 读取是线程安全的，可在 JavaBridge 线程直接调用。 */
+        int uiScalePercent();
     }
 
     private final Host host;
@@ -39,5 +41,10 @@ final class TvBridge {
     @JavascriptInterface
     public void setServer(String url) {
         host.onSetServer(url);
+    }
+
+    @JavascriptInterface
+    public int getUiScale() {
+        return host.uiScalePercent();
     }
 }

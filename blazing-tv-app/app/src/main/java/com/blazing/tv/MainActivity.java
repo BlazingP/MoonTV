@@ -49,7 +49,7 @@ public class MainActivity extends Activity implements TvBridge.Host {
 
     private FrameLayout root;
     private WebView webView;
-    private ServerPrefs prefs;
+    private AppPrefs prefs;
     private String navScript = "";
     private final ShellChromeClient chromeClient = new ShellChromeClient();
 
@@ -63,7 +63,7 @@ public class MainActivity extends Activity implements TvBridge.Host {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        prefs = new ServerPrefs(this);
+        prefs = new AppPrefs(this);
         navScript = readAsset(NAV_SCRIPT_ASSET);
 
         root = new FrameLayout(this);
@@ -354,16 +354,47 @@ public class MainActivity extends Activity implements TvBridge.Host {
         String[] items = {
                 getString(R.string.menu_reload),
                 getString(R.string.menu_home),
+                getString(R.string.menu_ui_scale),
                 getString(R.string.menu_server)
         };
         new AlertDialog.Builder(this)
                 .setTitle(R.string.menu_title)
                 .setItems(items, (d, which) -> {
+                    if (webView == null) return;
                     if (which == 0) webView.reload();
                     else if (which == 1) webView.loadUrl(prefs.getServer());
+                    else if (which == 2) showUiScaleDialog();
                     else showServerDialog();
                 })
                 .show();
+    }
+
+    /** 界面大小：越小，网页排版越宽，一屏显示的海报越多。选中后立即生效。 */
+    private void showUiScaleDialog() {
+        int[] options = AppPrefs.UI_SCALE_OPTIONS;
+        String[] labels = new String[options.length];
+        int checked = 0;
+        for (int i = 0; i < options.length; i++) {
+            labels[i] = options[i] == AppPrefs.DEFAULT_UI_SCALE
+                    ? getString(R.string.ui_scale_default, options[i])
+                    : getString(R.string.ui_scale_option, options[i]);
+            if (options[i] == prefs.getUiScale()) checked = i;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.ui_scale_title)
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    prefs.setUiScale(options[which]);
+                    applyUiScale();
+                    d.dismiss();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void applyUiScale() {
+        if (webView == null) return;
+        webView.evaluateJavascript("window.__tvApplyUiScale && window.__tvApplyUiScale("
+                + prefs.getUiScale() + ")", null);
     }
 
     private void showServerDialog() {
@@ -381,7 +412,7 @@ public class MainActivity extends Activity implements TvBridge.Host {
     }
 
     private void applyServer(String raw) {
-        String url = ServerPrefs.normalize(raw);
+        String url = AppPrefs.normalize(raw);
         if (url == null) {
             Toast.makeText(this, R.string.server_invalid, Toast.LENGTH_LONG).show();
             return;
@@ -423,6 +454,11 @@ public class MainActivity extends Activity implements TvBridge.Host {
         runOnUiThread(() -> {
             if (isOnErrorPage()) applyServer(raw);
         });
+    }
+
+    @Override
+    public int uiScalePercent() {
+        return prefs.getUiScale();
     }
 
     /** 只有本地错误页可以调用 retry / setServer，防止远程页面改写服务器地址。 */
