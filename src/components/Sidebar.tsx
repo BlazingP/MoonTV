@@ -176,7 +176,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       <div className='hidden md:flex'>
         <aside
           data-sidebar
-          className={`fixed left-0 top-0 z-10 h-screen border-r border-slate-200/70 bg-white/55 shadow-[18px_0_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 dark:border-white/10 dark:bg-slate-950/62 dark:shadow-[18px_0_80px_rgba(0,0,0,0.36)] ${
+          className={`fixed left-0 top-0 z-10 h-screen border-r border-slate-200/70 bg-white/55 shadow-[18px_0_70px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 dark:border-white/10 dark:bg-slate-950/[0.62] dark:shadow-[18px_0_80px_rgba(0,0,0,0.36)] ${
             isCollapsed ? 'w-16' : 'w-64'
           }`}
           style={{
@@ -212,7 +212,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 href='/'
                 onClick={() => setActive('/')}
                 data-active={active === '/'}
-                className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 font-medium text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/12 data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${
+                className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 font-medium text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/[0.12] data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${
                   isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
                 } gap-3 justify-start`}
               >
@@ -233,7 +233,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   setActive('/search');
                 }}
                 data-active={active === '/search'}
-                className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 font-medium text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/12 data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${
+                className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 font-medium text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/[0.12] data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${
                   isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
                 } gap-3 justify-start`}
               >
@@ -273,7 +273,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                       title={isCollapsed ? item.label : undefined}
                       onClick={() => setActive(item.href)}
                       data-active={isActive}
-                      className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 text-sm text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/12 data-[active=true]:font-medium data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${
+                      className={`group flex min-h-[42px] items-center rounded-2xl px-3 py-2 pl-4 text-sm text-slate-700 transition-all duration-200 hover:bg-white/70 hover:text-emerald-700 data-[active=true]:bg-emerald-500/[0.12] data-[active=true]:font-medium data-[active=true]:text-emerald-800 data-[active=true]:shadow-sm dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-emerald-300 dark:data-[active=true]:bg-emerald-400/10 dark:data-[active=true]:text-emerald-300 ${
                         isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
                       } gap-3 justify-start`}
                     >

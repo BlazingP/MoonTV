@@ -92,7 +92,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
                 aria-current={active ? 'page' : undefined}
                 className={`flex h-14 w-full flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors ${
                   active
-                    ? 'bg-emerald-500/12'
+                    ? 'bg-emerald-500/[0.12]'
                     : 'hover:bg-slate-900/5 dark:hover:bg-white/5'
                 }`}
               >
