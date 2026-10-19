@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Blazing TV</string>
+    <string name="press_back_again">再按一次返回键退出</string>
+    <string name="menu_title">Blazing TV</string>
+    <string name="menu_reload">刷新页面</string>
+    <string name="menu_home">回到首页</string>
+    <string name="menu_server">修改服务器地址</string>
+    <string name="server_hint">例如 http://192.168.0.200:3000</string>
+    <string name="server_invalid">地址必须以 http:// 或 https:// 开头</string>
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="hulu_service_label">Blazing TV · 遥控器改键</string>
+    <string name="hulu_service_description">开启后，遥控器上的 Hulu 键打开 Blazing TV，U-NEXT 键打开 Moonlight（不影响从桌面打开 Hulu 和 U-NEXT）。本服务只处理这两个按键，其他按键原样交给系统，不读取屏幕内容。</string>
+</resources>

@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.blazing.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.blazing.tv'
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+        // 默认服务器地址：局域网里的 MoonTV（BLAZING-TV）
+        buildConfigField 'String', 'DEFAULT_SERVER', '"http://192.168.0.200:3000"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // 个人自用：用调试证书签名，方便直接 adb 安装
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    // addDocumentStartJavaScript：页面一开始就注入遥控器导航脚本
+    implementation 'androidx.webkit:webkit:1.8.0'
+}

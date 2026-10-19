@@ -1,0 +1,5 @@
+# gradlew 是 shell 脚本，必须保持 LF，否则在 Linux/macOS 上无法执行
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary
