@@ -116,3 +116,13 @@
     background-size: 0 2px, 100% 2px;
   }
 }
+
+/*
+ * ArtPlayer 网页全屏：播放器在 PageLayout 的 <main class="relative z-0"> 里，
+ * <main> 自成层叠上下文，播放器的 z-index 再高也盖不住侧边栏（z-10）、
+ * 右上角按钮（z-20）和手机端顶栏/底栏（z-[650]/z-[600]）。
+ * 网页全屏期间把 <main> 提到最上层，退出后恢复原样。
+ */
+main:has(.art-fullscreen-web) {
+  z-index: 1000;
+}
