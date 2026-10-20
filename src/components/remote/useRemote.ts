@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { RemoteCommand, RemoteDevice, RemoteEpisode } from '@/lib/remote/types';
+import {
+  RemoteCommand,
+  RemoteDevice,
+  RemoteEpisode,
+  RemoteSource,
+} from '@/lib/remote/types';
 
 import { applyOptimistic } from './optimistic';
 
@@ -21,6 +26,7 @@ export interface UseRemoteResult {
   deviceId: string | null;
   device: RemoteDevice | null;
   episodes: RemoteEpisode[];
+  sources: RemoteSource[];
   notice: RemoteNotice | null;
   selectDevice: (id: string) => void;
   send: (command: RemoteCommand, okText?: string) => Promise<boolean>;
@@ -86,30 +92,40 @@ function useDevices() {
 function useDeviceStream(deviceId: string | null) {
   const [device, setDevice] = useState<RemoteDevice | null>(null);
   const [episodes, setEpisodes] = useState<RemoteEpisode[]>([]);
+  const [sources, setSources] = useState<RemoteSource[]>([]);
 
   useEffect(() => {
     setDevice(null);
     setEpisodes([]);
+    setSources([]);
     if (!deviceId) return;
-    const source = new EventSource(
+    const stream = new EventSource(
       `/api/remote/events?device=${encodeURIComponent(deviceId)}`
     );
-    source.addEventListener('status', (event) => {
+    stream.addEventListener('status', (event) => {
       try {
         const next = JSON.parse((event as MessageEvent).data) as RemoteDevice;
         if (next.deviceId !== deviceId) return;
         setDevice(next);
-        const list = next.status?.episodes;
-        if (list && list.length > 0) setEpisodes(list);
-        else if (next.status?.page === 'other') setEpisodes([]);
+        // 列表只在变化时随广播下发，没带时保留上一份；离开播放页时清空
+        const status = next.status;
+        if (status?.page !== 'play') {
+          setEpisodes([]);
+          setSources([]);
+          return;
+        }
+        if (status.episodes && status.episodes.length > 0) {
+          setEpisodes(status.episodes);
+        }
+        if (status.sources) setSources(status.sources);
       } catch {
         // 忽略无法解析的事件
       }
     });
-    return () => source.close();
+    return () => stream.close();
   }, [deviceId]);
 
-  return { device, setDevice, episodes };
+  return { device, setDevice, episodes, sources };
 }
 
 function useNotice() {
@@ -190,13 +206,26 @@ export function useRemote(): UseRemoteResult {
     [deviceId, setDevice, show]
   );
 
-  const device = stream.device ?? devices.find((d) => d.deviceId === deviceId);
+  // 实时状态来自 SSE；待机（idle）是“没有上报”造成的，SSE 不会推送，只能从轮询的设备列表里取
+  const polled = devices.find((d) => d.deviceId === deviceId);
+  // 电视一恢复，SSE 会先推来新状态（lastSeen 更新），这时以 SSE 为准，不必等下一次轮询
+  const pollIsNewer =
+    polled !== undefined &&
+    stream.device !== null &&
+    polled.lastSeen >= stream.device.lastSeen;
+  const device = stream.device
+    ? {
+        ...stream.device,
+        idle: pollIsNewer ? polled?.idle : stream.device.idle,
+      }
+    : polled;
   return {
     devices,
     loading,
     deviceId,
     device: device ?? null,
     episodes: stream.episodes,
+    sources: stream.sources,
     notice,
     selectDevice,
     send,

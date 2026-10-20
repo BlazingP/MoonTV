@@ -38,6 +38,13 @@
   var MAX_TITLE_LENGTH = 200;
   var MAX_SHORT_TEXT_LENGTH = 128;
   var MAX_LABEL_LENGTH = 24;
+  var MAX_SOURCES = 100;
+  // Kazumi 的 id 是 base64 编码的 JSON，常见 300 字符以上
+  var MAX_SOURCE_KEY_LENGTH = 1024;
+  var MAX_SOURCE_TEXT_LENGTH = 40;
+  // 源列表序列化后的总长度上限，保证整个状态请求远低于服务端 64KB 限制
+  // （最坏情况：分集约 18KB + 其他字段约 7KB，这里留足余量）
+  var MAX_SOURCES_CHARS = 24000;
 
   var deviceId = '';
   var source = null;
@@ -48,6 +55,7 @@
   var lastKey = '';
   var lastSentAt = 0;
   var lastEpisodesSig = null;
+  var lastSourcesSig = null;
   var nextReportAt = 0;
   var failures = 0;
   var inflight = false;
@@ -131,7 +139,9 @@
     es.addEventListener('command', onCommandEvent);
     es.onopen = function () {
       reconnectDelay = RECONNECT_MIN_MS;
-      lastEpisodesSig = null; // 服务器可能重启过，重新带上分集列表
+      // 服务器可能重启过，重新带上分集和源列表
+      lastEpisodesSig = null;
+      lastSourcesSig = null;
       report(true);
     };
     es.onerror = function () {
@@ -180,6 +190,17 @@
 
   function isIndex(value) {
     return isFiniteNumber(value) && value >= 0 && Math.floor(value) === value;
+  }
+
+  // 换源命令里的 source / id：非空、长度有限、不含控制字符（C0、DEL、C1，与服务端一致）
+  function isSourceKey(value) {
+    if (typeof value !== 'string') return false;
+    if (value.length < 1 || value.length > MAX_SOURCE_KEY_LENGTH) return false;
+    for (var i = 0; i < value.length; i++) {
+      var code = value.charCodeAt(i);
+      if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return false;
+    }
+    return true;
   }
 
   // 站内路径：以 "/" 开头、不以 "//" 开头、无反斜杠和空白/控制字符
@@ -231,6 +252,9 @@
       case 'navigate':
         if (!isSafePath(c.url)) return null;
         return { type: 'navigate', url: c.url };
+      case 'source':
+        if (!isSourceKey(c.source) || !isSourceKey(c.id)) return null;
+        return { type: 'source', source: c.source, id: c.id };
       default:
         return null;
     }
@@ -241,11 +265,11 @@
     return document.querySelector('video');
   }
 
-  function viaPlayer(method, arg) {
+  function viaPlayer(method, arg, arg2) {
     var player = window.__moontvPlayer;
     if (!player || typeof player[method] !== 'function') return false;
     try {
-      player[method](arg);
+      player[method](arg, arg2);
       return true;
     } catch (e) {
       return false;
@@ -348,6 +372,10 @@
       case 'navigate':
         if (isSafePath(command.url)) location.assign(command.url);
         break;
+      case 'source':
+        // 没有播放器接口（旧版服务器）时无法换源，直接忽略
+        viaPlayer('setSource', command.source, command.id);
+        break;
       case 'home':
         location.assign('/');
         break;
@@ -379,6 +407,28 @@
     return out;
   }
 
+  function sanitizeSources(list) {
+    if (!Array.isArray(list)) return undefined;
+    var out = [];
+    var chars = 0;
+    for (var i = 0; i < list.length && out.length < MAX_SOURCES; i++) {
+      var item = list[i];
+      if (!item || !isSourceKey(item.source) || !isSourceKey(item.id)) continue;
+      var entry = {
+        source: item.source,
+        id: item.id,
+        name: text(item.name, MAX_SOURCE_TEXT_LENGTH) || item.source,
+        episodes: isIndex(item.episodes) ? item.episodes : 0,
+      };
+      copyIf(entry, 'quality', text(item.quality, MAX_SOURCE_TEXT_LENGTH));
+      copyIf(entry, 'speed', text(item.speed, MAX_SOURCE_TEXT_LENGTH));
+      chars += JSON.stringify(entry).length;
+      if (chars > MAX_SOURCES_CHARS) break; // 超出总长度就截断，不让整个上报失败
+      out.push(entry);
+    }
+    return out;
+  }
+
   function copyIf(target, key, value) {
     if (value !== undefined) target[key] = value;
   }
@@ -393,8 +443,9 @@
     var out = {};
     copyIf(out, 'title', text(state.title, MAX_TITLE_LENGTH));
     copyIf(out, 'year', text(state.year, MAX_SHORT_TEXT_LENGTH));
-    copyIf(out, 'source', text(state.source, MAX_SHORT_TEXT_LENGTH));
-    copyIf(out, 'id', text(state.id, MAX_SHORT_TEXT_LENGTH));
+    // source / id 不能截断，否则对不上源（Kazumi 的 id 很长）；不合法就不报
+    if (isSourceKey(state.source)) out.source = state.source;
+    if (isSourceKey(state.id)) out.id = state.id;
     copyIf(out, 'poster', text(state.poster, MAX_URL_LENGTH));
     if (isIndex(state.episodeIndex)) out.episodeIndex = state.episodeIndex;
     if (isIndex(state.totalEpisodes)) out.totalEpisodes = state.totalEpisodes;
@@ -405,6 +456,9 @@
     if (typeof state.fullscreen === 'boolean')
       out.fullscreen = state.fullscreen;
     copyIf(out, 'episodes', sanitizeEpisodes(state.episodes));
+    copyIf(out, 'sources', sanitizeSources(state.sources));
+    if (typeof state.sourcesLoading === 'boolean')
+      out.sourcesLoading = state.sourcesLoading;
     return out;
   }
 
@@ -461,13 +515,29 @@
     return parts.join('|');
   }
 
-  // 不含 updatedAt / episodes 的状态指纹，用来判断“除时间戳外没有变化”
-  function statusKey(status, episodesSig) {
+  // 源列表签名带上片名：服务器按片名沿用源列表；换源后列表本身不变，不需要重发。
+  // 空列表（还在搜索）也有签名，这样新片的空列表能把上一部的列表替换掉。
+  function sourcesSignature(status) {
+    var sources = status.sources;
+    if (!Array.isArray(sources)) return '';
+    var parts = [status.title || '', sources.length];
+    for (var i = 0; i < sources.length; i++) {
+      var s = sources[i];
+      parts.push(
+        [s.source, s.id, s.episodes, s.quality || '', s.speed || ''].join(':')
+      );
+    }
+    return parts.join('|');
+  }
+
+  // 不含 updatedAt 和列表的状态指纹，用来判断“除时间戳外没有变化”
+  function statusKey(status, listsSig) {
     var rest = {};
     Object.keys(status).forEach(function (k) {
-      if (k !== 'updatedAt' && k !== 'episodes') rest[k] = status[k];
+      if (k !== 'updatedAt' && k !== 'episodes' && k !== 'sources')
+        rest[k] = status[k];
     });
-    return JSON.stringify(rest) + '#' + episodesSig;
+    return JSON.stringify(rest) + '#' + listsSig;
   }
 
   function reportInterval() {
@@ -490,15 +560,21 @@
     nextReportAt = now + reportInterval();
     var status = buildStatus();
     var sig = episodesSignature(status);
-    var key = statusKey(status, sig);
+    var srcSig = sourcesSignature(status);
+    var key = statusKey(status, sig + '#' + srcSig);
     if (!force && key === lastKey && now - lastSentAt < HEARTBEAT_MS) return;
     var withEpisodes = sig !== '' && sig !== lastEpisodesSig;
-    if (sig === '') lastEpisodesSig = null; // 离开播放页后服务器可能丢掉分集，回来时重发
+    var withSources = srcSig !== '' && srcSig !== lastSourcesSig;
+    // 离开播放页后服务器可能丢掉列表，回来时重发
+    if (sig === '') lastEpisodesSig = null;
+    if (srcSig === '') lastSourcesSig = null;
     if (!withEpisodes) delete status.episodes;
+    if (!withSources) delete status.sources;
     send(status, function () {
       lastKey = key;
       lastSentAt = now;
       if (withEpisodes) lastEpisodesSig = sig;
+      if (withSources) lastSourcesSig = srcSig;
     });
   }
 

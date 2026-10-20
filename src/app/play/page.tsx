@@ -984,11 +984,17 @@ function PlayPageClient() {
       cover: videoCover,
       detail,
       episodeIndex: currentEpisodeIndex,
+      sources: availableSources,
+      // sourceSearchLoading 在本页从未被设为 true；页面初次加载、源还没出来时也算“正在搜索”
+      sourcesLoading:
+        sourceSearchLoading || (loading && availableSources.length === 0),
+      videoInfo: precomputedVideoInfo,
     },
     actions: {
       setEpisode: handleEpisodeChange,
       next: handleNextEpisode,
       prev: handlePreviousEpisode,
+      changeSource: handleSourceChange,
     },
   });
 

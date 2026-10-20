@@ -1,6 +1,6 @@
 import { SearchResult } from '@/lib/types';
 
-import { buildPlayUrl, parseRecordKey } from '../playUrl';
+import { buildPlayUrl, isKazumiSource, parseRecordKey } from '../playUrl';
 import { groupPlayUrl, groupResults } from '../searchGroup';
 import { parseRemoteCommand } from '../types';
 
@@ -50,6 +50,46 @@ describe('buildPlayUrl', () => {
   });
 });
 
+describe('buildPlayUrl kazumi scope', () => {
+  it('adds scope=kazumi only when the caller asks for it', () => {
+    const url = buildPlayUrl({
+      source: 'kazumi_mxdm',
+      id: '7',
+      title: '萤火虫的出嫁',
+      kazumiOnly: true,
+    });
+    expect(new URLSearchParams(url.split('?')[1]).get('scope')).toBe('kazumi');
+    expect(
+      buildPlayUrl({ source: 'kazumi_mxdm', id: '7', title: 'x' })
+    ).not.toContain('scope=');
+  });
+
+  it('detects kazumi bridge sources by key prefix', () => {
+    expect(isKazumiSource('kazumi_mxdm')).toBe(true);
+    expect(isKazumiSource('bfzy')).toBe(false);
+  });
+
+  it('limits a search group to kazumi only when every source is kazumi', () => {
+    const item = (source: string, id: string): SearchResult => ({
+      id,
+      title: '萤火虫的出嫁',
+      poster: '',
+      episodes: ['a', 'b'],
+      source,
+      source_name: source,
+      year: '2026',
+    });
+    const scopeOf = (items: SearchResult[]) =>
+      new URLSearchParams(
+        groupPlayUrl({ key: 'k', items }, '').split('?')[1]
+      ).get('scope');
+    expect(scopeOf([item('kazumi_mxdm', '1'), item('kazumi_abc', '2')])).toBe(
+      'kazumi'
+    );
+    // 混合组的第一项是 Kazumi 也不能限定范围，否则普通源会被排除在优选之外
+    expect(scopeOf([item('kazumi_mxdm', '1'), item('bfzy', '2')])).toBeNull();
+  });
+});
 describe('parseRecordKey', () => {
   it('splits source and id', () => {
     expect(parseRecordKey('ffzy+123')).toEqual({ source: 'ffzy', id: '123' });

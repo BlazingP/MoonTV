@@ -22,6 +22,16 @@ export interface RemoteEpisode {
   label: string;
 } // label 如 "第 3 集" 或分集名
 
+// 换源列表的一项
+export interface RemoteSource {
+  source: string; // 源 key（如 bfzy、kazumi_mxdm），最长 1024，不截断
+  id: string; // 该源的视频 id，最长 1024（Kazumi 的 id 是 base64 JSON，常见 300+ 字符），不截断
+  name: string; // 源显示名
+  episodes: number; // 该源集数
+  quality?: string; // 播放页测速得到的清晰度
+  speed?: string; // 播放页测速得到的加载速度
+}
+
 export interface RemoteStatus {
   path: string; // 当前页面路径（含 query），如 "/play?source=ffzy&id=1"
   page: 'play' | 'other';
@@ -33,6 +43,8 @@ export interface RemoteStatus {
   episodeIndex?: number; // 0 基
   totalEpisodes?: number;
   episodes?: RemoteEpisode[]; // 仅在集数变化或首次上报时带上，最多 500 条
+  sources?: RemoteSource[]; // 仅在源列表变化时带上，最多 100 条；服务端按片名沿用
+  sourcesLoading?: boolean; // 播放页仍在搜索可用源
   currentTime?: number; // 秒
   duration?: number; // 秒（未知时省略）
   paused?: boolean;
@@ -44,6 +56,7 @@ export interface RemoteDevice {
   deviceId: string; // 电视端生成并持久化的随机 id，/^[a-zA-Z0-9_-]{8,64}$/
   name: string; // 显示名，最长 40 字符，默认 "Blazing TV"
   online: boolean;
+  idle?: boolean; // 在线但超过 20 秒没上报（屏保 / APP 在后台），命令要等电视回到前台才执行
   lastSeen: number;
   status: RemoteStatus | null;
 }
@@ -59,6 +72,7 @@ export type RemoteCommand =
   | { type: 'prev' }
   | { type: 'fullscreen'; on: boolean }
   | { type: 'navigate'; url: string } // 只允许以 "/" 开头、不以 "//" 开头的站内路径，最长 2048
+  | { type: 'source'; source: string; id: string } // 换源，只能切到当前 sources 列表里的源
   | { type: 'home' };
 ```
 
@@ -88,7 +102,8 @@ interface MoonTvPlayerApi {
   setEpisode(index: number): void; // 复用 handleEpisodeChange
   next(): void; // 复用 handleNextEpisode
   prev(): void; // 复用 handlePreviousEpisode
-  setFullscreen(on: boolean): void; // 用 ArtPlayer 的 fullscreen
+  setFullscreen(on: boolean): void; // 用 ArtPlayer 的网页全屏 fullscreenWeb（远程命令没有用户手势，真全屏会被拒绝）
+  setSource(source: string, id: string): void; // 复用 handleSourceChange；不在可用源列表里则忽略
 }
 ```
 
@@ -98,5 +113,6 @@ interface MoonTvPlayerApi {
 - deviceId 存 `localStorage['blazingtv:deviceId']`，不存在时随机生成 16 位。
 - 用 `EventSource` 连接 `/api/remote/tv/events`，断线由浏览器自动重连；收到 `command` 时执行。
 - 在播放页优先用 `window.__moontvPlayer`，没有时退回直接操作 `<video>`。
-- `navigate`：再次校验站内路径后 `location.assign(url)`；`home`：`location.assign('/')`。
+- `navigate`：再次校验站内路径后 `location.assign(url)`；`home`：`location.assign('/')`；`source`：调用 `__moontvPlayer.setSource`。
+- Kazumi 源（key 以 `kazumi_` 开头）的播放链接带 `scope=kazumi`，与 Kazumi 页一致，播放页换源只在 Kazumi 源里找。
 - 状态上报：播放页每 1 秒一次，其他页面每 5 秒一次，命令执行后立即上报一次；`episodes` 只在集数列表变化时带上。用 `fetch(..., { keepalive: true })`，失败静默重试。

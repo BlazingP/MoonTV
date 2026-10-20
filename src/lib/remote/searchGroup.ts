@@ -1,7 +1,7 @@
 // 把搜索结果按「标题 + 年份 + 电影/剧集」聚合，与搜索页的聚合规则一致。
 import { SearchResult } from '@/lib/types';
 
-import { buildPlayUrl } from './playUrl';
+import { buildPlayUrl, isKazumiSource } from './playUrl';
 
 export interface ResultGroup {
   key: string;
@@ -44,5 +44,7 @@ export function groupPlayUrl(group: ResultGroup, query: string): string {
     year: first.year && first.year !== 'unknown' ? first.year : undefined,
     prefer: group.items.length > 1,
     stitle: trimmed && trimmed !== first.title ? trimmed : undefined,
+    // 只有整组都是 Kazumi 源才限定范围，否则会把组里的普通源排除在优选之外
+    kazumiOnly: group.items.every((item) => isKazumiSource(item.source)),
   });
 }

@@ -3,7 +3,7 @@ import { MutableRefObject, useEffect, useRef } from 'react';
 
 import { SearchResult } from '@/lib/types';
 
-import { RemoteEpisode, RemoteStatus } from './types';
+import { RemoteEpisode, RemoteSource, RemoteStatus } from './types';
 
 export type MoonTvPlayerState = Omit<
   RemoteStatus,
@@ -20,6 +20,7 @@ export interface MoonTvPlayerApi {
   next(): void;
   prev(): void;
   setFullscreen(on: boolean): void;
+  setSource(source: string, id: string): void; // 只能切到当前可用源列表里的源
 }
 
 declare global {
@@ -28,11 +29,12 @@ declare global {
   }
 }
 
-/** 本桥接用到的 ArtPlayer 成员。 */
-interface PlayerLike {
+/** 本桥接用到的 ArtPlayer 成员（ArtPlayer 没有 paused 属性，只有 playing 和底层 video）。 */
+export interface PlayerLike {
   currentTime: number;
   duration: number;
-  paused: boolean;
+  playing: boolean;
+  video?: { paused: boolean } | null;
   fullscreen: boolean;
   fullscreenWeb: boolean;
   play(): unknown;
@@ -48,12 +50,17 @@ export interface PlayerBridgeInfo {
   cover: string;
   detail: SearchResult | null;
   episodeIndex: number;
+  sources: SearchResult[];
+  sourcesLoading: boolean;
+  /** 播放页的测速结果，key 为 `${source}-${id}`。 */
+  videoInfo: Map<string, { quality: string; loadSpeed: string }>;
 }
 
 export interface PlayerBridgeActions {
   setEpisode: (index: number) => void;
   next: () => void;
   prev: () => void;
+  changeSource: (source: string, id: string, title: string) => unknown;
 }
 
 interface PlayerBridgeInput {
@@ -76,7 +83,55 @@ function buildEpisodes(detail: SearchResult | null): RemoteEpisode[] {
   }));
 }
 
-function buildState(
+function buildSources(info: PlayerBridgeInfo): RemoteSource[] {
+  return info.sources.map((item) => {
+    const speedInfo = info.videoInfo.get(`${item.source}-${item.id}`);
+    return {
+      source: item.source,
+      id: item.id,
+      name: item.source_name || item.source,
+      episodes: item.episodes?.length || 0,
+      ...(speedInfo?.quality ? { quality: speedInfo.quality } : {}),
+      ...(speedInfo?.loadSpeed ? { speed: speedInfo.loadSpeed } : {}),
+    };
+  });
+}
+
+/** 换源期间忽略新的换源请求，避免两次换源并发、把播放记录和片头片尾配置留在中间源上。 */
+let sourceChangeInFlight = false;
+
+/**
+ * 只允许切到当前可用源列表里的源（新命令唯一的权限边界），
+ * 复用播放页的换源流程（保存进度、换集数等）。返回是否真的发起了换源。
+ */
+export function changeSource(
+  input: Pick<PlayerBridgeInput, 'info' | 'actions'>,
+  source: string,
+  id: string
+): boolean {
+  const { info, actions } = input;
+  if (sourceChangeInFlight) return false;
+  if (source === info.source && id === info.id) return false;
+  const target = info.sources.find((s) => s.source === source && s.id === id);
+  if (!target) return false;
+  sourceChangeInFlight = true;
+  Promise.resolve(actions.changeSource(source, id, target.title))
+    .catch(() => undefined)
+    .finally(() => {
+      sourceChangeInFlight = false;
+    });
+  return true;
+}
+
+/** 暂停状态以底层 video 为准；playing 在缓冲时也是 false，只作兜底。 */
+function isPaused(player: PlayerLike): boolean {
+  if (player.video && typeof player.video.paused === 'boolean') {
+    return player.video.paused;
+  }
+  return !player.playing;
+}
+
+export function buildState(
   player: PlayerLike | null,
   info: PlayerBridgeInfo
 ): MoonTvPlayerState {
@@ -91,12 +146,14 @@ function buildState(
     episodeIndex: info.episodeIndex,
     totalEpisodes: info.detail?.episodes?.length || 0,
     episodes: buildEpisodes(info.detail),
+    sources: buildSources(info),
+    sourcesLoading: info.sourcesLoading,
     currentTime: Number.isFinite(currentTime) ? currentTime : undefined,
     duration:
       Number.isFinite(duration) && (duration as number) > 0
         ? duration
         : undefined,
-    paused: player ? Boolean(player.paused) : undefined,
+    paused: player ? isPaused(player) : undefined,
     fullscreen: player
       ? Boolean(player.fullscreen || player.fullscreenWeb)
       : undefined,
@@ -137,6 +194,9 @@ function createApi(
       }
       if (player.fullscreen) player.fullscreen = false;
       player.fullscreenWeb = false;
+    },
+    setSource: (source, id) => {
+      changeSource(getLatest(), source, id);
     },
   };
 }

@@ -23,6 +23,11 @@ export function applyOptimistic(
         ...device,
         status: { ...status, episodeIndex: command.index, currentTime: 0 },
       };
+    case 'source':
+      return {
+        ...device,
+        status: { ...status, source: command.source, id: command.id },
+      };
     default:
       return device;
   }

@@ -209,3 +209,82 @@ describe('sanitizeStatus', () => {
     );
   });
 });
+
+describe('source command', () => {
+  it('accepts a source switch with safe keys', () => {
+    expect(
+      parseRemoteCommand({ type: 'source', source: 'kazumi_mxdm', id: '42' })
+    ).toEqual({ type: 'source', source: 'kazumi_mxdm', id: '42' });
+  });
+
+  it('accepts long Kazumi ids (base64 JSON, ~300 chars)', () => {
+    const id = 'a'.repeat(300);
+    expect(
+      parseRemoteCommand({ type: 'source', source: 'kazumi_mxdm', id })
+    ).toEqual({ type: 'source', source: 'kazumi_mxdm', id });
+    const status = sanitizeStatus({
+      path: '/play',
+      page: 'play',
+      updatedAt: 1,
+      source: 'kazumi_mxdm',
+      id,
+    });
+    expect(status?.id).toBe(id);
+  });
+
+  it('rejects empty, oversized or control-char keys', () => {
+    const bad = [
+      { type: 'source', source: '', id: '1' },
+      { type: 'source', source: 'bfzy' },
+      { type: 'source', source: 'bfzy', id: 1 },
+      { type: 'source', source: 'x'.repeat(1025), id: '1' },
+      { type: 'source', source: 'bf\nzy', id: '1' },
+    ];
+    for (const input of bad) expect(parseRemoteCommand(input)).toBeNull();
+  });
+});
+
+describe('sanitizeStatus sources', () => {
+  const base = { path: '/play', page: 'play', updatedAt: 1 };
+
+  it('keeps valid sources and optional speed info', () => {
+    const status = sanitizeStatus({
+      ...base,
+      sourcesLoading: true,
+      sources: [
+        {
+          source: 'bfzy',
+          id: '1',
+          name: '暴风',
+          episodes: 12,
+          quality: '1080p',
+        },
+        { source: 'ruyi', id: '2', episodes: 3 },
+      ],
+    });
+    expect(status?.sourcesLoading).toBe(true);
+    expect(status?.sources).toEqual([
+      { source: 'bfzy', id: '1', name: '暴风', episodes: 12, quality: '1080p' },
+      { source: 'ruyi', id: '2', name: 'ruyi', episodes: 3 },
+    ]);
+  });
+
+  it('skips malformed entries and caps the list at 100', () => {
+    const many = Array.from({ length: 150 }, (_, i) => ({
+      source: `s${i}`,
+      id: String(i),
+      episodes: 1,
+    }));
+    const status = sanitizeStatus({
+      ...base,
+      sources: [{ source: '', id: '1', episodes: 1 }, { id: '1' }, ...many],
+    });
+    expect(status?.sources).toHaveLength(98);
+  });
+
+  it('omits sources when not an array', () => {
+    expect(sanitizeStatus({ ...base, sources: 'x' })).not.toHaveProperty(
+      'sources'
+    );
+  });
+});

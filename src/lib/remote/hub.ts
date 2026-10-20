@@ -16,6 +16,9 @@ export const OFFLINE_TTL_MS = 10 * 60 * 1000;
 /** 最多记录的设备数，防止随意的 deviceId 把内存撑大。 */
 export const MAX_DEVICES = 32;
 
+/** 电视至少每 5 秒上报一次（失败退避时 10 秒）；超过这个时长没上报视为待机。 */
+export const IDLE_AFTER_MS = 20_000;
+
 interface TvConnection {
   send: HubSend;
   close?: () => void;
@@ -55,17 +58,23 @@ export function offlineDevice(deviceId: string): RemoteDevice {
   };
 }
 
-/** includeEpisodes 为 false 时去掉分集列表，避免每秒的进度广播都带上几百条分集。 */
-function toDevice(entry: DeviceEntry, includeEpisodes = true): RemoteDevice {
+/** includeLists 为 false 时去掉分集/源列表，避免每秒的进度广播都带上几百条列表。 */
+function toDevice(
+  entry: DeviceEntry,
+  nowMs: number,
+  includeLists = true
+): RemoteDevice {
   let status = entry.status;
-  if (!includeEpisodes && status?.episodes) {
-    const { episodes: _omitted, ...rest } = status;
+  if (!includeLists && (status?.episodes || status?.sources)) {
+    const { episodes: _episodes, sources: _sources, ...rest } = status;
     status = rest;
   }
+  const online = entry.tv !== null;
   return {
     deviceId: entry.deviceId,
     name: entry.name,
-    online: entry.tv !== null,
+    online,
+    idle: online && nowMs - entry.lastSeen > IDLE_AFTER_MS,
     lastSeen: entry.lastSeen,
     status,
   };
@@ -83,6 +92,25 @@ function withCarriedEpisodes(
   if (next.page !== 'play') return next;
   if (next.source !== previous.source || next.id !== previous.id) return next;
   return { ...next, episodes: previous.episodes };
+}
+
+/**
+ * 源列表同理，但换源后 source/id 会变而列表不变，所以按片名判断是不是同一部作品。
+ */
+function withCarriedSources(
+  previous: RemoteStatus | null,
+  next: RemoteStatus
+): RemoteStatus {
+  if (next.sources !== undefined || !previous?.sources) return next;
+  if (next.page !== 'play' || next.title !== previous.title) return next;
+  return { ...next, sources: previous.sources };
+}
+
+function withCarriedLists(
+  previous: RemoteStatus | null,
+  next: RemoteStatus
+): RemoteStatus {
+  return withCarriedSources(previous, withCarriedEpisodes(previous, next));
 }
 
 function safeCall(fn: (() => void) | undefined): void {
@@ -126,8 +154,8 @@ export function createRemoteHub(now: () => number = Date.now): RemoteHub {
     return created;
   };
 
-  const broadcast = (entry: DeviceEntry, includeEpisodes = true): void => {
-    const device = toDevice(entry, includeEpisodes);
+  const broadcast = (entry: DeviceEntry, includeLists = true): void => {
+    const device = toDevice(entry, now(), includeLists);
     for (const watcher of Array.from(entry.watchers)) {
       try {
         watcher('status', device);
@@ -174,29 +202,35 @@ export function createRemoteHub(now: () => number = Date.now): RemoteHub {
   const updateStatus: RemoteHub['updateStatus'] = (deviceId, status) => {
     const entry = devices.get(deviceId);
     if (!entry || !entry.tv) return false;
-    const previousEpisodes = entry.status?.episodes;
-    entry.status = withCarriedEpisodes(entry.status, status);
+    const previous = entry.status;
+    entry.status = withCarriedLists(previous, status);
     entry.lastSeen = now();
-    // 沿用的分集是同一个数组引用；只有列表真的变了才随广播下发
-    broadcast(entry, entry.status.episodes !== previousEpisodes);
+    // 沿用的列表是同一个数组引用；只有分集或源列表真的变了才随广播下发
+    const listsChanged =
+      entry.status.episodes !== previous?.episodes ||
+      entry.status.sources !== previous?.sources;
+    broadcast(entry, listsChanged);
     return true;
   };
 
   const listDevices: RemoteHub['listDevices'] = () => {
     prune();
     const cutoff = now() - OFFLINE_TTL_MS;
-    return Array.from(devices.values())
-      .filter((entry) => entry.tv !== null || entry.lastSeen >= cutoff)
-      .map((entry) => toDevice(entry))
-      .sort((a, b) => {
-        if (a.online !== b.online) return a.online ? -1 : 1;
-        return b.lastSeen - a.lastSeen;
-      });
+    return (
+      Array.from(devices.values())
+        .filter((entry) => entry.tv !== null || entry.lastSeen >= cutoff)
+        // 设备列表只用来选设备和判断待机，分集/源列表走 SSE，这里不带以省流量
+        .map((entry) => toDevice(entry, now(), false))
+        .sort((a, b) => {
+          if (a.online !== b.online) return a.online ? -1 : 1;
+          return b.lastSeen - a.lastSeen;
+        })
+    );
   };
 
   const getDevice: RemoteHub['getDevice'] = (deviceId) => {
     const entry = devices.get(deviceId);
-    return entry ? toDevice(entry) : null;
+    return entry ? toDevice(entry, now()) : null;
   };
 
   const subscribeStatus: RemoteHub['subscribeStatus'] = (deviceId, send) => {

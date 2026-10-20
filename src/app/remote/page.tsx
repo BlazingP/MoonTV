@@ -8,6 +8,7 @@ import EpisodeGrid from '@/components/remote/EpisodeGrid';
 import NowPlaying from '@/components/remote/NowPlaying';
 import RecentPanel from '@/components/remote/RecentPanel';
 import SearchPanel from '@/components/remote/SearchPanel';
+import SourceList from '@/components/remote/SourceList';
 import { useRemote } from '@/components/remote/useRemote';
 
 const EMPTY_TEXT = '没有找到在线的电视，请在电视上打开 Blazing TV';
@@ -72,12 +73,37 @@ export default function RemotePage() {
             <EmptyState loading={remote.loading} hasDevices={anyOnline} />
           ) : (
             <>
+              {online && device.idle && (
+                <p
+                  role='status'
+                  className='rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300'
+                >
+                  电视好像进入了屏保或 Blazing TV
+                  在后台，按一下电视遥控器唤醒后，刚才的操作才会执行。
+                </p>
+              )}
               <NowPlaying device={device} onCommand={remote.send} />
               <EpisodeGrid
                 episodes={remote.episodes}
                 currentIndex={device.status?.episodeIndex}
                 disabled={!online || device.status?.page !== 'play'}
                 onSelect={(index) => remote.send({ type: 'episode', index })}
+              />
+              <SourceList
+                sources={remote.sources}
+                currentSource={device.status?.source}
+                currentId={device.status?.id}
+                loading={
+                  device.status?.page === 'play' &&
+                  Boolean(device.status?.sourcesLoading)
+                }
+                disabled={!online || device.status?.page !== 'play'}
+                onSelect={(item) =>
+                  remote.send(
+                    { type: 'source', source: item.source, id: item.id },
+                    `已切换到 ${item.name}`
+                  )
+                }
               />
               <section className='media-section surface-glass space-y-4'>
                 <div className='section-bar'>

@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 
 import { getAllPlayRecords, PlayRecord } from '@/lib/db.client';
-import { buildPlayUrl, parseRecordKey } from '@/lib/remote/playUrl';
+import {
+  buildPlayUrl,
+  isKazumiSource,
+  parseRecordKey,
+} from '@/lib/remote/playUrl';
 
 import MediaRow from './MediaRow';
 
@@ -78,6 +82,7 @@ export default function RecentPanel({ disabled, onPlay }: RecentPanelProps) {
                 title: record.title,
                 year: record.year,
                 stitle: record.search_title,
+                kazumiOnly: isKazumiSource(source),
               }),
               record.title
             )

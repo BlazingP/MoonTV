@@ -1,6 +1,7 @@
 import {
   createRemoteHub,
   getRemoteHub,
+  IDLE_AFTER_MS,
   MAX_DEVICES,
   OFFLINE_TTL_MS,
 } from '../hub';
@@ -282,5 +283,92 @@ describe('device limit', () => {
 describe('getRemoteHub', () => {
   it('returns a process-wide singleton', () => {
     expect(getRemoteHub()).toBe(getRemoteHub());
+  });
+});
+
+describe('sources carry-over', () => {
+  const sources = [
+    { source: 'bfzy', id: '1', name: '暴风', episodes: 12 },
+    { source: 'ruyi', id: '2', name: '如意', episodes: 12 },
+  ];
+  const playing = (overrides: Partial<RemoteStatus> = {}) =>
+    status({
+      page: 'play',
+      title: '嫁金钗',
+      source: 'bfzy',
+      id: '1',
+      ...overrides,
+    });
+
+  it('keeps sources across a source switch of the same title', () => {
+    const { hub } = connected();
+    hub.updateStatus('tv-00000001', playing({ sources }));
+    hub.updateStatus('tv-00000001', playing({ source: 'ruyi', id: '2' }));
+    expect(hub.getDevice('tv-00000001')?.status?.sources).toEqual(sources);
+  });
+
+  it('drops sources when the title changes or the page is left', () => {
+    const { hub } = connected();
+    hub.updateStatus('tv-00000001', playing({ sources }));
+    hub.updateStatus('tv-00000001', playing({ title: '别的片' }));
+    expect(hub.getDevice('tv-00000001')?.status?.sources).toBeUndefined();
+
+    hub.updateStatus('tv-00000001', playing({ sources }));
+    hub.updateStatus('tv-00000001', status({ title: '嫁金钗' }));
+    expect(hub.getDevice('tv-00000001')?.status?.sources).toBeUndefined();
+  });
+
+  it('broadcasts sources only when the list changed', () => {
+    const { hub } = connected();
+    const watcher = jest.fn();
+    hub.subscribeStatus('tv-00000001', watcher);
+    hub.updateStatus('tv-00000001', playing({ sources }));
+    hub.updateStatus('tv-00000001', playing({ currentTime: 5 }));
+    const sent = watcher.mock.calls.map((c) => (c[1] as RemoteDevice).status);
+    expect(sent[0]?.sources).toEqual(sources);
+    expect(sent[1]).not.toHaveProperty('sources');
+  });
+});
+
+describe('idle detection', () => {
+  it('marks an online TV idle after IDLE_AFTER_MS without status', () => {
+    const { hub, advance } = connected();
+    hub.updateStatus('tv-00000001', status());
+    advance(IDLE_AFTER_MS);
+    expect(hub.getDevice('tv-00000001')?.idle).toBe(false);
+    advance(1);
+    expect(hub.getDevice('tv-00000001')?.idle).toBe(true);
+    hub.updateStatus('tv-00000001', status());
+    expect(hub.getDevice('tv-00000001')?.idle).toBe(false);
+  });
+
+  it('never marks an offline TV idle', () => {
+    const { hub, advance } = setup();
+    hub.connectTv('tv-00000001', 'A', jest.fn())();
+    advance(IDLE_AFTER_MS * 2);
+    expect(hub.getDevice('tv-00000001')?.idle).toBe(false);
+  });
+});
+
+describe('listDevices payload', () => {
+  it('omits episodes and sources (they are delivered over SSE)', () => {
+    const { hub } = connected();
+    hub.updateStatus(
+      'tv-00000001',
+      status({
+        page: 'play',
+        title: 'X',
+        source: 's',
+        id: '1',
+        episodes: [{ index: 0, label: '第 1 集' }],
+        sources: [{ source: 's', id: '1', name: 'S', episodes: 1 }],
+      })
+    );
+    const [device] = hub.listDevices();
+    expect(device.status).not.toHaveProperty('episodes');
+    expect(device.status).not.toHaveProperty('sources');
+    expect(device.status?.title).toBe('X');
+    // getDevice（遥控页 SSE 的首帧）仍然带完整列表
+    expect(hub.getDevice('tv-00000001')?.status?.sources).toHaveLength(1);
   });
 });

@@ -5,6 +5,16 @@ export interface RemoteEpisode {
   label: string;
 }
 
+/** 播放页可切换的播放源（换源列表的一项）。 */
+export interface RemoteSource {
+  source: string; // 源 key，如 "bfzy"、"kazumi_mxdm"
+  id: string;
+  name: string; // 源显示名
+  episodes: number; // 该源的集数
+  quality?: string; // 测速得到的清晰度，如 "1080p"
+  speed?: string; // 测速得到的加载速度，如 "2.3 MB/s"
+}
+
 export interface RemoteStatus {
   path: string;
   page: 'play' | 'other';
@@ -16,6 +26,8 @@ export interface RemoteStatus {
   episodeIndex?: number;
   totalEpisodes?: number;
   episodes?: RemoteEpisode[];
+  sources?: RemoteSource[]; // 仅在列表变化时上报，服务端沿用
+  sourcesLoading?: boolean; // 播放页正在搜索可用源
   currentTime?: number;
   duration?: number;
   paused?: boolean;
@@ -27,6 +39,8 @@ export interface RemoteDevice {
   deviceId: string;
   name: string;
   online: boolean;
+  /** 连接还在但很久没上报：电视多半进入了屏保或 APP 在后台，命令要等它回到前台才执行。 */
+  idle?: boolean;
   lastSeen: number;
   status: RemoteStatus | null;
 }
@@ -42,6 +56,7 @@ export type RemoteCommand =
   | { type: 'prev' }
   | { type: 'fullscreen'; on: boolean }
   | { type: 'navigate'; url: string }
+  | { type: 'source'; source: string; id: string } // 换源
   | { type: 'home' };
 
 export const MAX_SEEK_SECONDS = 86400;
@@ -52,6 +67,10 @@ export const MAX_EPISODES = 500;
 export const MAX_EPISODE_LABEL = 80;
 export const MAX_DEVICE_NAME = 40;
 export const MAX_STATUS_TEXT = 500;
+export const MAX_SOURCES = 100;
+// source / id 的最大长度：Kazumi 的 id 是 base64 编码的 JSON，常见 300 字符以上
+export const MAX_SOURCE_KEY = 1024;
+export const MAX_SOURCE_TEXT = 40; // 源名称、清晰度、速度的最大长度
 export const DEFAULT_DEVICE_NAME = 'Blazing TV';
 
 const DEVICE_ID_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
@@ -96,6 +115,16 @@ export function isSafeNavigateUrl(url: unknown): url is string {
   );
 }
 
+/** 换源命令里的 source / id：非空、长度有限、不含控制字符。 */
+export function isSafeSourceKey(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_SOURCE_KEY &&
+    !HAS_CONTROL_CHAR.test(value)
+  );
+}
+
 const SIMPLE_COMMANDS = new Set([
   'toggle',
   'play',
@@ -127,6 +156,10 @@ function parseParamCommand(input: UnknownRecord): RemoteCommand | null {
     case 'navigate':
       return isSafeNavigateUrl(input.url)
         ? { type: 'navigate', url: input.url }
+        : null;
+    case 'source':
+      return isSafeSourceKey(input.source) && isSafeSourceKey(input.id)
+        ? { type: 'source', source: input.source, id: input.id }
         : null;
     default:
       return null;
@@ -160,6 +193,32 @@ function sanitizeEpisodes(value: unknown): RemoteEpisode[] | undefined {
   return episodes;
 }
 
+function sanitizeSource(item: unknown): RemoteSource | null {
+  if (!isRecord(item)) return null;
+  if (!isSafeSourceKey(item.source) || !isSafeSourceKey(item.id)) return null;
+  if (!isInRange(item.episodes, 0, MAX_EPISODE_INDEX + 1)) return null;
+  const quality = cleanText(item.quality, MAX_SOURCE_TEXT);
+  const speed = cleanText(item.speed, MAX_SOURCE_TEXT);
+  return {
+    source: item.source,
+    id: item.id,
+    name: cleanText(item.name, MAX_SOURCE_TEXT) || item.source,
+    episodes: Math.floor(item.episodes),
+    ...(quality ? { quality } : {}),
+    ...(speed ? { speed } : {}),
+  };
+}
+
+function sanitizeSources(value: unknown): RemoteSource[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const sources: RemoteSource[] = [];
+  for (const item of value.slice(0, MAX_SOURCES)) {
+    const source = sanitizeSource(item);
+    if (source) sources.push(source);
+  }
+  return sources;
+}
+
 function sanitizeNumbers(input: UnknownRecord): Partial<RemoteStatus> {
   const result: Partial<RemoteStatus> = {};
   if (isFiniteNumber(input.episodeIndex)) {
@@ -175,11 +234,14 @@ function sanitizeNumbers(input: UnknownRecord): Partial<RemoteStatus> {
 
 function sanitizeStrings(input: UnknownRecord): Partial<RemoteStatus> {
   const result: Partial<RemoteStatus> = {};
-  const keys = ['title', 'year', 'source', 'id', 'poster'] as const;
+  const keys = ['title', 'year', 'poster'] as const;
   for (const key of keys) {
     const text = cleanText(input[key], MAX_STATUS_TEXT);
     if (text !== undefined) result[key] = text;
   }
+  // source / id 不截断（截断后就对不上源了），超长直接丢弃
+  if (isSafeSourceKey(input.source)) result.source = input.source;
+  if (isSafeSourceKey(input.id)) result.id = input.id;
   return result;
 }
 
@@ -188,6 +250,9 @@ function sanitizeFlags(input: UnknownRecord): Partial<RemoteStatus> {
   if (typeof input.paused === 'boolean') result.paused = input.paused;
   if (typeof input.fullscreen === 'boolean') {
     result.fullscreen = input.fullscreen;
+  }
+  if (typeof input.sourcesLoading === 'boolean') {
+    result.sourcesLoading = input.sourcesLoading;
   }
   return result;
 }
@@ -200,6 +265,7 @@ export function sanitizeStatus(input: unknown): RemoteStatus | null {
   if (!isFiniteNumber(input.updatedAt)) return null;
 
   const episodes = sanitizeEpisodes(input.episodes);
+  const sources = sanitizeSources(input.sources);
   return {
     path,
     page: input.page,
@@ -207,6 +273,7 @@ export function sanitizeStatus(input: unknown): RemoteStatus | null {
     ...sanitizeNumbers(input),
     ...sanitizeFlags(input),
     ...(episodes ? { episodes } : {}),
+    ...(sources ? { sources } : {}),
     updatedAt: input.updatedAt,
   };
 }
