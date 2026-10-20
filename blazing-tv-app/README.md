@@ -10,6 +10,7 @@
 - 返回键：退出全屏 → 返回上一页（跳过播放页切集产生的历史）→ 首页连按两次退出
 - 长按返回键打开菜单：刷新、回首页、界面大小、修改服务器地址
 - 界面大小（100% / 90% / 80% / 70%）：调大网页 viewport 宽度让 WebView 整体缩小，一屏显示更多海报；设置会保存
+- 遥控：手机/电脑打开 MoonTV 的 `/remote` 页面即可遥控电视（播放 / 暂停 / 快进 / 选集 / 全屏 / 跳转页面），协议见仓库 `docs/tv-remote.md`；只有本 APP 会连接中转站，普通浏览器不会被控制
 - 连不上服务器时显示提示页，可重试或改地址
 - 遥控器改键（无障碍服务「Blazing TV · 遥控器改键」，需在 设置 → 系统 → 无障碍 里手动开启）
   - Hulu 键 → Blazing TV
@@ -43,5 +44,6 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 | `app/src/main/java/com/blazing/tv/MainActivity.java`   | WebView 外壳、按键处理、全屏、返回逻辑、菜单 |
 | `app/src/main/java/com/blazing/tv/HuluKeyService.java` | 遥控器改键（无障碍服务）                     |
 | `app/src/main/assets/tv-nav.js`                        | 注入网页的遥控器导航脚本                     |
+| `app/src/main/assets/tv-remote.js`                     | 注入网页的手机遥控脚本（连接 `/api/remote`） |
 | `app/src/main/assets/error.html`                       | 离线提示页                                   |
 | `design/`                                              | 图标与横幅源文件、绘制脚本                   |

@@ -42,6 +42,7 @@ import java.util.Set;
 public class MainActivity extends Activity implements TvBridge.Host {
     private static final String ERROR_PAGE = "file:///android_asset/error.html";
     private static final String NAV_SCRIPT_ASSET = "tv-nav.js";
+    private static final String REMOTE_SCRIPT_ASSET = "tv-remote.js";
     private static final long EXIT_CONFIRM_WINDOW_MS = 2000;
     private static final long RENDERER_RECREATE_MIN_INTERVAL_MS = 10_000;
     /** 跨 recreate 保留，用于识别渲染进程反复崩溃。 */
@@ -50,7 +51,8 @@ public class MainActivity extends Activity implements TvBridge.Host {
     private FrameLayout root;
     private WebView webView;
     private AppPrefs prefs;
-    private String navScript = "";
+    /** 注入网页的脚本：tv-nav.js（遥控器导航）+ tv-remote.js（手机遥控），各自带防重复安装。 */
+    private String pageScript = "";
     private final ShellChromeClient chromeClient = new ShellChromeClient();
 
     private View customView;
@@ -64,7 +66,7 @@ public class MainActivity extends Activity implements TvBridge.Host {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new AppPrefs(this);
-        navScript = readAsset(NAV_SCRIPT_ASSET);
+        pageScript = readAsset(NAV_SCRIPT_ASSET) + "\n;\n" + readAsset(REMOTE_SCRIPT_ASSET);
 
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -111,13 +113,13 @@ public class MainActivity extends Activity implements TvBridge.Host {
 
     /** 新版 WebView 支持在文档开始时注入，避免页面加载完成前按键无人接管。 */
     private void installDocumentStartScript() {
-        if (navScript.isEmpty()
+        if (pageScript.isEmpty()
                 || !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             return;
         }
         Set<String> origins = new HashSet<>();
         origins.add("*");
-        WebViewCompat.addDocumentStartJavaScript(webView, navScript, origins);
+        WebViewCompat.addDocumentStartJavaScript(webView, pageScript, origins);
     }
 
     // ---------------------------------------------------------------- WebView 回调
@@ -147,12 +149,12 @@ public class MainActivity extends Activity implements TvBridge.Host {
         @Override
         public void onPageCommitVisible(WebView view, String url) {
             // 旧版 WebView 的兜底注入；脚本自带防重复安装
-            if (!navScript.isEmpty()) view.evaluateJavascript(navScript, null);
+            if (!pageScript.isEmpty()) view.evaluateJavascript(pageScript, null);
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
-            if (!navScript.isEmpty()) view.evaluateJavascript(navScript, null);
+            if (!pageScript.isEmpty()) view.evaluateJavascript(pageScript, null);
             if (clearHistoryOnNextLoad && url != null && !url.startsWith(ERROR_PAGE)) {
                 // 换服务器后，等新首页加载完再清历史，避免返回键回到旧服务器
                 view.clearHistory();

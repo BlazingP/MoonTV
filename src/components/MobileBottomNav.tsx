@@ -2,7 +2,16 @@
 
 'use client';
 
-import { Clover, Film, Home, Search, Sparkles, Star, Tv } from 'lucide-react';
+import {
+  Cast,
+  Clover,
+  Film,
+  Home,
+  Search,
+  Sparkles,
+  Star,
+  Tv,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -39,6 +48,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       label: '综艺',
       href: '/douban?type=show',
     },
+    { icon: Cast, label: '遥控电视', href: '/remote' },
   ]);
 
   useEffect(() => {

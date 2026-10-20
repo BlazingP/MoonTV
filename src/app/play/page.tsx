@@ -21,6 +21,7 @@ import {
   saveSkipConfig,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { usePlayerBridge } from '@/lib/remote/usePlayerBridge';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
@@ -971,6 +972,25 @@ function PlayPageClient() {
       setCurrentEpisodeIndex(idx + 1);
     }
   };
+
+  // 暴露 window.__moontvPlayer，供 Blazing TV 遥控使用（不改变页面原有行为）
+  usePlayerBridge({
+    playerRef: artPlayerRef,
+    info: {
+      title: videoTitle,
+      year: videoYear,
+      source: currentSource,
+      id: currentId,
+      cover: videoCover,
+      detail,
+      episodeIndex: currentEpisodeIndex,
+    },
+    actions: {
+      setEpisode: handleEpisodeChange,
+      next: handleNextEpisode,
+      prev: handlePreviousEpisode,
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // 键盘快捷键

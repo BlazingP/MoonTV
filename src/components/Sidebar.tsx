@@ -3,6 +3,7 @@
 'use client';
 
 import {
+  Cast,
   Clover,
   Film,
   Home,
@@ -153,6 +154,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       icon: Clover,
       label: '综艺',
       href: '/douban?type=show',
+    },
+    {
+      icon: Cast,
+      label: '遥控电视',
+      href: '/remote',
     },
   ]);
 
