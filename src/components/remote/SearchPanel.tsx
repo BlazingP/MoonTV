@@ -3,6 +3,7 @@
 import { Search } from 'lucide-react';
 import { FormEvent, useMemo, useState } from 'react';
 
+import { r18Query } from '@/lib/r18';
 import { groupPlayUrl, groupResults } from '@/lib/remote/searchGroup';
 import { SearchResult } from '@/lib/types';
 
@@ -20,7 +21,9 @@ type SearchState =
   | { phase: 'done'; query: string; results: SearchResult[] };
 
 async function fetchResults(query: string): Promise<SearchResult[]> {
-  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+  const res = await fetch(
+    `/api/search?q=${encodeURIComponent(query)}${r18Query()}`
+  );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = (await res.json()) as { results?: SearchResult[] };
   return data.results ?? [];

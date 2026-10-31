@@ -12,6 +12,7 @@ import {
   getSearchHistory,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { r18Query, readShowR18 } from '@/lib/r18';
 import { SearchResult } from '@/lib/types';
 import { yellowWords } from '@/lib/yellow';
 
@@ -163,13 +164,14 @@ function SearchPageClient() {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query.trim())}`
+        `/api/search?q=${encodeURIComponent(query.trim())}${r18Query()}`
       );
       const data = await response.json();
       let results = data.results;
       if (
         typeof window !== 'undefined' &&
-        !(window as any).RUNTIME_CONFIG?.DISABLE_YELLOW_FILTER
+        !(window as any).RUNTIME_CONFIG?.DISABLE_YELLOW_FILTER &&
+        !readShowR18()
       ) {
         results = results.filter((result: SearchResult) => {
           const typeName = result.type_name || '';

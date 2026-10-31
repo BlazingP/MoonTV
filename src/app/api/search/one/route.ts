@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
+import { isR18Source } from '@/lib/r18';
 import { yellowWords } from '@/lib/yellow';
 
 export const runtime = 'edge';
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const resourceId = searchParams.get('resourceId');
+  const showR18 = searchParams.get('r18') === '1';
 
   if (!query || !resourceId) {
     const cacheTime = await getCacheTime();
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
   try {
     // 根据 resourceId 查找对应的 API 站点
     const targetSite = apiSites.find((site) => site.key === resourceId);
-    if (!targetSite) {
+    if (!targetSite || (!showR18 && isR18Source(targetSite.name))) {
       return NextResponse.json(
         {
           error: `未找到指定的视频源: ${resourceId}`,
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
 
     const results = await searchFromApi(targetSite, query);
     let result = results.filter((r) => r.title === query);
-    if (!config.SiteConfig.DisableYellowFilter) {
+    if (!config.SiteConfig.DisableYellowFilter && !showR18) {
       result = result.filter((result) => {
         const typeName = result.type_name || '';
         return !yellowWords.some((word: string) => typeName.includes(word));

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCacheTime, getConfig } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { isKazumiApi } from '@/lib/kazumi';
+import { isR18Source } from '@/lib/r18';
 import { yellowWords } from '@/lib/yellow';
 
 export const runtime = 'edge';
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const kazumiOnly = searchParams.get('scope') === 'kazumi';
+  const showR18 = searchParams.get('r18') === '1';
 
   if (!query) {
     const cacheTime = await getCacheTime();
@@ -28,14 +30,17 @@ export async function GET(request: Request) {
 
   const config = await getConfig();
   const apiSites = config.SourceConfig.filter(
-    (site) => !site.disabled && (!kazumiOnly || isKazumiApi(site.api))
+    (site) =>
+      !site.disabled &&
+      (!kazumiOnly || isKazumiApi(site.api)) &&
+      (showR18 || !isR18Source(site.name))
   );
   const searchPromises = apiSites.map((site) => searchFromApi(site, query));
 
   try {
     const results = await Promise.all(searchPromises);
     let flattenedResults = results.flat();
-    if (!config.SiteConfig.DisableYellowFilter) {
+    if (!config.SiteConfig.DisableYellowFilter && !showR18) {
       flattenedResults = flattenedResults.filter((result) => {
         const typeName = result.type_name || '';
         return !yellowWords.some((word: string) => typeName.includes(word));

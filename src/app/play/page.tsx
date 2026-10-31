@@ -21,6 +21,7 @@ import {
   saveSkipConfig,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { r18Query } from '@/lib/r18';
 import { usePlayerBridge } from '@/lib/remote/usePlayerBridge';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
@@ -671,7 +672,7 @@ function PlayPageClient() {
         const response = await fetch(
           `/api/search?q=${encodeURIComponent(query.trim())}${
             searchParams.get('scope') === 'kazumi' ? '&scope=kazumi' : ''
-          }`
+          }${r18Query()}`
         );
         if (!response.ok) {
           throw new Error('搜索失败');
