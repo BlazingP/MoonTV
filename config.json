@@ -132,14 +132,6 @@
     "dadi": {
       "api": "https://dadiapi.com/api.php/provide/vod",
       "name": "大地资源"
-    },
-    "r18_jingpin": {
-      "api": "https://www.jingpinx.com/api.php/provide/vod",
-      "name": "R18-精品资源(含成人综艺)"
-    },
-    "r18_souav": {
-      "api": "https://api.souavzy.vip/api.php/provide/vod",
-      "name": "R18-souav(含节目企划)"
     }
   }
 }
