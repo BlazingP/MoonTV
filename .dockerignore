@@ -1,2 +1,5 @@
 .env
 .env*.local
+# Kazumi signing secret and auto-deploy logs/markers must not enter the build context
+.env*
+logs/

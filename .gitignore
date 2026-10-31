@@ -50,3 +50,6 @@ config.kazumi.json
 __pycache__/
 *.pyc
 .venv/
+
+# Auto-deploy logs (scripts/auto-deploy.ps1)
+logs/
