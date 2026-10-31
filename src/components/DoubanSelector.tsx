@@ -4,6 +4,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
+import {
+  isShowRecommend,
+  SHOW_GENRES,
+  SHOW_HOT,
+  SHOW_HOT_OPTIONS,
+  SHOW_REGIONS,
+} from '@/lib/doubanShow';
+
 interface SelectorOption {
   label: string;
   value: string;
@@ -67,12 +75,22 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
     { label: '纪录片', value: 'tv_documentary' },
   ];
 
-  // 综艺选择器选项
-  const showOptions: SelectorOption[] = [
-    { label: '全部', value: 'show' },
-    { label: '国内', value: 'show_domestic' },
-    { label: '国外', value: 'show_foreign' },
-  ];
+  // 综艺一级：热门 + 各类型；二级随一级变化（热门分档 / 地区）
+  const showPrimaryOptions: SelectorOption[] = [SHOW_HOT, ...SHOW_GENRES].map(
+    (value) => ({ label: value, value })
+  );
+  const showSecondaryOptions: SelectorOption[] = isShowRecommend(
+    primarySelection || SHOW_HOT
+  )
+    ? SHOW_REGIONS.map((value) => ({ label: value, value }))
+    : SHOW_HOT_OPTIONS;
+
+  const getPrimaryOptions = (): SelectorOption[] =>
+    type === 'movie'
+      ? moviePrimaryOptions
+      : type === 'show'
+      ? showPrimaryOptions
+      : [];
 
   // 更新指示器位置的通用函数
   const updateIndicatorPosition = (
@@ -110,10 +128,10 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
   // 组件挂载时立即计算初始位置
   useEffect(() => {
     // 主选择器初始位置
-    if (type === 'movie') {
-      const activeIndex = moviePrimaryOptions.findIndex(
-        (opt) =>
-          opt.value === (primarySelection || moviePrimaryOptions[0].value)
+    const primaryOptions = getPrimaryOptions();
+    if (primaryOptions.length > 0) {
+      const activeIndex = primaryOptions.findIndex(
+        (opt) => opt.value === (primarySelection || primaryOptions[0].value)
       );
       updateIndicatorPosition(
         activeIndex,
@@ -135,8 +153,9 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         (opt) => opt.value === (secondarySelection || tvOptions[0].value)
       );
     } else if (type === 'show') {
-      secondaryActiveIndex = showOptions.findIndex(
-        (opt) => opt.value === (secondarySelection || showOptions[0].value)
+      secondaryActiveIndex = showSecondaryOptions.findIndex(
+        (opt) =>
+          opt.value === (secondarySelection || showSecondaryOptions[0].value)
       );
     }
 
@@ -152,8 +171,9 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
 
   // 监听主选择器变化
   useEffect(() => {
-    if (type === 'movie') {
-      const activeIndex = moviePrimaryOptions.findIndex(
+    const primaryOptions = getPrimaryOptions();
+    if (primaryOptions.length > 0) {
+      const activeIndex = primaryOptions.findIndex(
         (opt) => opt.value === primarySelection
       );
       const cleanup = updateIndicatorPosition(
@@ -182,10 +202,10 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       );
       options = tvOptions;
     } else if (type === 'show') {
-      activeIndex = showOptions.findIndex(
+      activeIndex = showSecondaryOptions.findIndex(
         (opt) => opt.value === secondarySelection
       );
-      options = showOptions;
+      options = showSecondaryOptions;
     }
 
     if (options.length > 0) {
@@ -197,7 +217,8 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
       );
       return cleanup;
     }
-  }, [secondarySelection]);
+    // 综艺切换一级时二级选项会整体替换，需要重新定位
+  }, [secondarySelection, primarySelection]);
 
   // 渲染胶囊式选择器
   const renderCapsuleSelector = (
@@ -307,19 +328,35 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         </div>
       )}
 
-      {/* 综艺类型 - 只显示一级选择器 */}
+      {/* 综艺类型 - 两级选择器：类型 + 范围 / 地区 */}
       {type === 'show' && (
-        <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-          <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
-            类型
-          </span>
-          <div className='overflow-x-auto'>
-            {renderCapsuleSelector(
-              showOptions,
-              secondarySelection || showOptions[0].value,
-              onSecondaryChange,
-              false
-            )}
+        <div className='space-y-3 sm:space-y-4'>
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
+              类型
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                showPrimaryOptions,
+                primarySelection || SHOW_HOT,
+                onPrimaryChange,
+                true
+              )}
+            </div>
+          </div>
+
+          <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+            <span className='min-w-[48px] text-xs font-semibold text-slate-500 dark:text-slate-400 sm:text-sm'>
+              {isShowRecommend(primarySelection || SHOW_HOT) ? '地区' : '范围'}
+            </span>
+            <div className='overflow-x-auto'>
+              {renderCapsuleSelector(
+                showSecondaryOptions,
+                secondarySelection || showSecondaryOptions[0].value,
+                onSecondaryChange,
+                false
+              )}
+            </div>
           </div>
         </div>
       )}

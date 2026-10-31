@@ -1,3 +1,8 @@
+import {
+  buildShowRecommendUrl,
+  DoubanRecommendItem,
+  toDoubanItems,
+} from './doubanShow';
 import { DoubanItem, DoubanResult } from './types';
 import { getDoubanProxyUrl } from './utils';
 
@@ -145,6 +150,49 @@ export async function getDoubanCategories(
 
     return response.json();
   }
+}
+
+interface DoubanShowParams {
+  genre: string;
+  region: string;
+  pageLimit?: number;
+  pageStart?: number;
+}
+
+/**
+ * 综艺按类型 / 地区获取，根据代理设置选择服务端 API 或客户端代理
+ */
+export async function getDoubanShow(
+  params: DoubanShowParams
+): Promise<DoubanResult> {
+  const { genre, region, pageLimit = 25, pageStart = 0 } = params;
+
+  if (shouldUseDoubanClient()) {
+    const response = await fetchWithTimeout(
+      buildShowRecommendUrl(genre, region, pageStart, pageLimit)
+    );
+    if (!response.ok) {
+      throw new Error(`获取豆瓣综艺数据失败: HTTP ${response.status}`);
+    }
+    const doubanData: { items?: DoubanRecommendItem[] } = await response.json();
+    return {
+      code: 200,
+      message: '获取成功',
+      list: toDoubanItems(doubanData.items || []),
+    };
+  }
+
+  const query = new URLSearchParams({
+    genre,
+    region,
+    limit: String(pageLimit),
+    start: String(pageStart),
+  });
+  const response = await fetch(`/api/douban/show?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error('获取豆瓣综艺数据失败');
+  }
+  return response.json();
 }
 
 interface DoubanListParams {

@@ -6,7 +6,12 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getDoubanCategories, getDoubanList } from '@/lib/douban.client';
+import {
+  getDoubanCategories,
+  getDoubanList,
+  getDoubanShow,
+} from '@/lib/douban.client';
+import { isShowRecommend, SHOW_HOT } from '@/lib/doubanShow';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 
 import DoubanCardSkeleton from '@/components/DoubanCardSkeleton';
@@ -36,7 +41,9 @@ function DoubanPageClient() {
 
   // 选择器状态 - 完全独立，不依赖URL参数
   const [primarySelection, setPrimarySelection] = useState<string>(() => {
-    return type === 'movie' ? '热门' : '';
+    if (type === 'movie') return '热门';
+    if (type === 'show') return SHOW_HOT;
+    return '';
   });
   const [secondarySelection, setSecondarySelection] = useState<string>(() => {
     if (type === 'movie') return '全部';
@@ -103,7 +110,7 @@ function DoubanPageClient() {
         setPrimarySelection('');
         setSecondarySelection('tv');
       } else if (type === 'show') {
-        setPrimarySelection('');
+        setPrimarySelection(SHOW_HOT);
         setSecondarySelection('show');
       } else {
         setPrimarySelection('');
@@ -148,6 +155,22 @@ function DoubanPageClient() {
     [type, primarySelection, secondarySelection]
   );
 
+  // 非自定义分类的分页获取：综艺按类型筛选时走推荐接口，其余走近期热门接口
+  const fetchCategoryPage = useCallback(
+    (pageStart: number): Promise<DoubanResult> => {
+      if (type === 'show' && isShowRecommend(primarySelection)) {
+        return getDoubanShow({
+          genre: primarySelection,
+          region: secondarySelection,
+          pageLimit: 25,
+          pageStart,
+        });
+      }
+      return getDoubanCategories(getRequestParams(pageStart));
+    },
+    [type, primarySelection, secondarySelection, getRequestParams]
+  );
+
   // 防抖的数据加载函数
   const loadInitialData = useCallback(async () => {
     try {
@@ -172,7 +195,7 @@ function DoubanPageClient() {
           throw new Error('没有找到对应的分类');
         }
       } else {
-        data = await getDoubanCategories(getRequestParams(0));
+        data = await fetchCategoryPage(0);
       }
 
       if (data.code === 200) {
@@ -189,7 +212,7 @@ function DoubanPageClient() {
     type,
     primarySelection,
     secondarySelection,
-    getRequestParams,
+    fetchCategoryPage,
     customCategories,
   ]);
 
@@ -257,9 +280,7 @@ function DoubanPageClient() {
               throw new Error('没有找到对应的分类');
             }
           } else {
-            data = await getDoubanCategories(
-              getRequestParams(currentPage * 25)
-            );
+            data = await fetchCategoryPage(currentPage * 25);
           }
 
           if (data.code === 200) {
@@ -323,8 +344,12 @@ function DoubanPageClient() {
       if (value !== primarySelection) {
         setLoading(true);
 
-        // 如果是自定义分类模式，同时更新一级和二级选择器
-        if (type === 'custom' && customCategories.length > 0) {
+        // 综艺切换类型时，二级选项随之替换，重置为对应的默认值
+        if (type === 'show') {
+          setPrimarySelection(value);
+          setSecondarySelection(isShowRecommend(value) ? '全部' : 'show');
+        } else if (type === 'custom' && customCategories.length > 0) {
+          // 如果是自定义分类模式，同时更新一级和二级选择器
           const firstCategory = customCategories.find(
             (cat) => cat.type === value
           );
