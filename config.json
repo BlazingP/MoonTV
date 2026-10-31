@@ -84,6 +84,62 @@
     "xiaomaomi": {
       "api": "https://zy.xmm.hk/api.php/provide/vod",
       "name": "小猫咪资源"
+    },
+    "suoni": {
+      "api": "https://suoniapi.com/api.php/provide/vod",
+      "name": "索尼资源"
+    },
+    "kuaiche": {
+      "api": "https://caiji.kuaichezy.org/api.php/provide/vod",
+      "name": "快车资源"
+    },
+    "niuniu": {
+      "api": "https://api.niuniuzy.me/api.php/provide/vod",
+      "name": "牛牛点播"
+    },
+    "okzy": {
+      "api": "https://api.okzyw.net/api.php/provide/vod",
+      "name": "OK资源"
+    },
+    "shandian": {
+      "api": "https://sdzyapi.com/api.php/provide/vod",
+      "name": "闪电资源"
+    },
+    "yaya": {
+      "api": "https://cj.yayazy.net/api.php/provide/vod",
+      "name": "鸭鸭资源"
+    },
+    "guangsu": {
+      "api": "https://api.guangsuapi.com/api.php/provide/vod",
+      "name": "光速资源"
+    },
+    "jinying": {
+      "api": "https://jyzyapi.com/api.php/provide/vod",
+      "name": "金鹰资源"
+    },
+    "hongniu": {
+      "api": "https://www.hongniuzy2.com/api.php/provide/vod",
+      "name": "红牛资源"
+    },
+    "huya": {
+      "api": "https://www.huyaapi.com/api.php/provide/vod",
+      "name": "虎牙资源"
+    },
+    "lovedan": {
+      "api": "https://lovedan.net/api.php/provide/vod",
+      "name": "艾旦影视"
+    },
+    "dadi": {
+      "api": "https://dadiapi.com/api.php/provide/vod",
+      "name": "大地资源"
+    },
+    "r18_jingpin": {
+      "api": "https://www.jingpinx.com/api.php/provide/vod",
+      "name": "R18-精品资源(含成人综艺)"
+    },
+    "r18_souav": {
+      "api": "https://api.souavzy.vip/api.php/provide/vod",
+      "name": "R18-souav(含节目企划)"
     }
   }
 }
