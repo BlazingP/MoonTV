@@ -14,7 +14,7 @@ export interface PlayTarget {
 
 /**
  * Kazumi 桥接源的 key 都以 "kazumi_" 开头（如 kazumi_mxdm）。
- * 这是部署配置（config.kazumi.json）的命名约定，改名后需要同步这里。
+ * 这是 src/lib/kazumiSources.ts 生成源时的命名约定，改名后需要同步这里。
  */
 export function isKazumiSource(source: string): boolean {
   return source.startsWith('kazumi_');

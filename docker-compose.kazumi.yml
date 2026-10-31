@@ -4,7 +4,8 @@ services:
     environment:
       - KAZUMI_BRIDGE_URL=http://kazumi-bridge:8787
     volumes:
-      - ./config.kazumi.json:/app/config.json:ro
+      # 规则目录随仓库更新；MoonTV 据此自动添加 kazumi_* 源，继续使用仓库的 config.json
+      - ./services/kazumi-bridge/rules:/app/kazumi-rules:ro
     depends_on:
       kazumi-bridge:
         condition: service_healthy

@@ -3,6 +3,7 @@
 import { getStorage } from '@/lib/db';
 
 import { AdminConfig } from './admin.types';
+import { buildKazumiSites } from './kazumiSources';
 import runtimeConfig from './runtime';
 
 export interface ApiSite {
@@ -44,6 +45,42 @@ export const API_CONFIG = {
   },
 };
 
+// 启用 Kazumi 桥接时，把规则目录里的规则作为 kazumi_* 源追加到文件配置
+function withKazumiSources(
+  config: ConfigFileStruct,
+  fs: typeof import('fs'),
+  path: typeof import('path')
+): ConfigFileStruct {
+  const bridge = process.env.KAZUMI_BRIDGE_URL;
+  if (!bridge) {
+    return config;
+  }
+  const rulesDir =
+    process.env.KAZUMI_RULES_DIR || path.join(process.cwd(), 'kazumi-rules');
+  let files: string[];
+  try {
+    files = fs.readdirSync(rulesDir).filter((file) => file.endsWith('.json'));
+  } catch (e) {
+    console.error('读取 Kazumi 规则目录失败:', e);
+    return config;
+  }
+  const rules = files.flatMap((file) => {
+    try {
+      const rule = JSON.parse(
+        fs.readFileSync(path.join(rulesDir, file), 'utf-8')
+      );
+      return [{ key: file.slice(0, -5), name: rule.name }];
+    } catch (e) {
+      console.error(`解析 Kazumi 规则 ${file} 失败:`, e);
+      return [];
+    }
+  });
+  return {
+    ...config,
+    api_site: { ...config.api_site, ...buildKazumiSites(bridge, rules) },
+  };
+}
+
 // 在模块加载时根据环境决定配置来源
 let fileConfig: ConfigFileStruct;
 let cachedConfig: AdminConfig;
@@ -61,7 +98,11 @@ async function initConfig() {
 
     const configPath = path.join(process.cwd(), 'config.json');
     const raw = fs.readFileSync(configPath, 'utf-8');
-    fileConfig = JSON.parse(raw) as ConfigFileStruct;
+    fileConfig = withKazumiSources(
+      JSON.parse(raw) as ConfigFileStruct,
+      fs,
+      path
+    );
     console.log('load dynamic config success');
   } else {
     // 默认使用编译时生成的配置
@@ -406,7 +447,11 @@ export async function resetConfig() {
 
     const configPath = path.join(process.cwd(), 'config.json');
     const raw = fs.readFileSync(configPath, 'utf-8');
-    fileConfig = JSON.parse(raw) as ConfigFileStruct;
+    fileConfig = withKazumiSources(
+      JSON.parse(raw) as ConfigFileStruct,
+      fs,
+      path
+    );
     console.log('load dynamic config success');
   } else {
     // 默认使用编译时生成的配置

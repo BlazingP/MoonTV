@@ -31,23 +31,23 @@
 需要 Docker Compose v2。以下命令在此仓库根目录执行，使用包含本次改动的代码。现有 `Brunch-1` 的镜像发布流程仅监听 `main`，因此不要认为拉取原 `latest` 镜像就包含本次修改；下面明确使用本地源码构建。
 
 1. 备份执行主机实际使用的 Compose、`config.json` 和 Redis 数据。若现有 Compose 与仓库版本不同，以执行主机版本为准，把新增服务和环境变量合并进去，保留原有账号、密码、域名、端口及存储配置。
-2. 生成独立配置，将示例 URL 换成**电视实际访问 MoonTV 的地址**（局域网地址也可以）：
+2. 生成签名密钥，将示例 URL 换成**电视实际访问 MoonTV 的地址**（局域网地址也可以）：
 
    ```bash
    node scripts/setup-kazumi.mjs https://tv.example.com
-   # 如执行主机配置不在仓库根目录，可传入实际配置文件：
-   # node scripts/setup-kazumi.mjs https://tv.example.com /path/to/existing-config.json
    ```
 
-   会生成 `.env.kazumi`（随机签名密钥）和 `config.kazumi.json`（保留原来源并添加 Kazumi），不覆盖原 `config.json`，也不覆盖已有生成配置。只有这两个文件在本地生成，它们已加入 `.gitignore`。
+   只生成 `.env.kazumi`（随机签名密钥），它是唯一的本地文件，已加入 `.gitignore`。视频源始终来自仓库里的 `config.json`；启用 Kazumi 时，MoonTV 启动时按 `services/kazumi-bridge/rules/` 自动添加 `kazumi_*` 源，不需要单独的配置副本。
 
-   执行主机没有 Node.js 时，可在仓库根目录使用临时 Node 容器生成配置（PowerShell，仍需替换公开地址）：
+   旧版本生成过 `config.kazumi.json`，更新到本版本后不再使用，确认新版本运行正常后可以删除。
+
+   执行主机没有 Node.js 时，可在仓库根目录使用临时 Node 容器生成（PowerShell，仍需替换公开地址）：
 
    ```powershell
    docker run --rm --mount "type=bind,source=$($PWD.Path),target=/workspace" --workdir /workspace node:20-alpine node scripts/setup-kazumi.mjs https://tv.example.com
    ```
 
-   已完成初次接入的主机只需要拉取新代码并重建，不必重新生成上述两个文件。
+   已完成初次接入的主机只需要拉取新代码并重建，不必重新生成 `.env.kazumi`。
 
    **妥善保留 `.env.kazumi` 的密钥。** 它签名作品 ID 和媒体链接，重建容器不应更换；主动更换会使旧的 Kazumi 收藏 ID 和播放链接失效，需重新搜索。
 
@@ -84,20 +84,13 @@
 
 把兼容的 XPath JSON 放入 `services/kazumi-bridge/rules/`，文件名使用小写字母、数字、下划线或短横线。不自动拉取或执行远程规则脚本。
 
-新增规则需要在 `config.kazumi.json` 的 `api_site` 增加来源，例如：
+MoonTV 会自动为每个规则添加来源：文件 `example.json` 对应 `kazumi_example`，名称为 `Kazumi · <规则的 name>`，地址为 `http://kazumi-bridge:8787/vod/example`。不需要手动修改 `config.json`。
 
-```json
-"kazumi_example": {
-  "name": "Kazumi · Example",
-  "api": "http://kazumi-bridge:8787/vod/example"
-}
-```
-
-不要设置此来源的 `detail` 字段，否则 MoonTV 会改走原来的特殊网页详情解析器。修改规则后重启适配服务；修改文件来源配置后重启 MoonTV。已有管理员禁用的来源保持禁用，可在后台重新启用。
+添加或修改规则后，重启适配服务和 MoonTV。已有管理员禁用的来源保持禁用，可在后台重新启用。
 
 ## 回滚
 
-恢复原来的 Compose 启动方式及原 `config.json` 挂载，移除 `KAZUMI_BRIDGE_URL` 环境变量。在 MoonTV 后台禁用添加的 `kazumi_*` 来源（数据库可能保留它们），再停止 `kazumi-bridge` 服务。保留 Redis 数据和签名文件，勿使用 `down -v`。
+恢复原来的 Compose 启动方式（不再叠加 `docker-compose.kazumi.yml`），移除 `KAZUMI_BRIDGE_URL` 环境变量。在 MoonTV 后台禁用添加的 `kazumi_*` 来源（数据库可能保留它们），再停止 `kazumi-bridge` 服务。保留 Redis 数据和签名文件，勿使用 `down -v`。
 
 ## 代码检查
 
