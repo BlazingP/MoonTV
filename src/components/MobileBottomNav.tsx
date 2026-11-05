@@ -6,6 +6,7 @@ import {
   Cast,
   Clover,
   Film,
+  HardDrive,
   Home,
   Search,
   Sparkles,
@@ -32,6 +33,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const [navItems, setNavItems] = useState([
     { icon: Home, label: '首页', href: '/' },
     { icon: Search, label: '搜索', href: '/search' },
+    { icon: HardDrive, label: '我的 NAS', href: '/nas' },
     { icon: Sparkles, label: '动漫kazumi', href: '/kazumi' },
     {
       icon: Film,

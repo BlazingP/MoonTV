@@ -14,7 +14,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
   }
 
-  if (!/^[\w-]+$/.test(id)) {
+  // Dots are allowed for NAS ids such as m.<hex> and s.<series>.<season>.
+  if (!/^[\w.-]+$/.test(id)) {
     return NextResponse.json({ error: '无效的视频ID格式' }, { status: 400 });
   }
 

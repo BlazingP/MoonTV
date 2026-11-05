@@ -6,6 +6,7 @@ import {
   Cast,
   Clover,
   Film,
+  HardDrive,
   Home,
   Menu,
   Search,
@@ -135,6 +136,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   };
 
   const [menuItems, setMenuItems] = useState([
+    {
+      icon: HardDrive,
+      label: '我的 NAS',
+      href: '/nas',
+    },
     {
       icon: Sparkles,
       label: '动漫kazumi',
