@@ -30,7 +30,10 @@
   var REPORT_TIMEOUT_MS = 8000;
   var RECONNECT_MIN_MS = 3000;
   var RECONNECT_MAX_MS = 30000;
+  var EVENT_SOURCE_CONNECTING = 0;
   var EVENT_SOURCE_CLOSED = 2;
+  // 连接中超过这么久还没连上，就当它卡住了，重新建连
+  var CONNECT_STUCK_MS = 20000;
 
   var MAX_EPISODES = 500;
   var MAX_URL_LENGTH = 2048;
@@ -50,6 +53,7 @@
   var source = null;
   var reconnectTimer = 0;
   var reconnectDelay = RECONNECT_MIN_MS;
+  var connectStartedAt = 0;
 
   var lastHref = location.href;
   var lastKey = '';
@@ -136,6 +140,7 @@
       encodeURIComponent(DEVICE_NAME);
     var es = new EventSource(url);
     source = es;
+    connectStartedAt = Date.now();
     es.addEventListener('command', onCommandEvent);
     es.onopen = function () {
       reconnectDelay = RECONNECT_MIN_MS;
@@ -148,6 +153,21 @@
       // 浏览器会自动重连；遇到 HTTP 错误（如未登录）连接会被彻底关闭，需要自己重建
       if (es.readyState === EVENT_SOURCE_CLOSED) scheduleReconnect();
     };
+  }
+
+  // 服务器说这台电视没连上，但本地的 EventSource 还以为自己连着：
+  // 网络闪断（交换机重启、Wi-Fi 掉线）后服务器那头的 TCP 早没了，电视这头却没收到断开，
+  // 成了半开连接，EventSource 不会自己重连。状态上报每 5 秒一次，收到 404 就立即重建连接。
+  function resyncConnection() {
+    if (reconnectTimer) return;
+    if (
+      source &&
+      source.readyState === EVENT_SOURCE_CONNECTING &&
+      Date.now() - connectStartedAt < CONNECT_STUCK_MS
+    )
+      return;
+    reconnectDelay = RECONNECT_MIN_MS;
+    connect();
   }
 
   function closeSource() {
@@ -600,6 +620,8 @@
     }
     request
       .then(function (res) {
+        // 404 = 服务器那边没有这台电视的遥控连接（见 /api/remote/tv/status）
+        if (res.status === 404) resyncConnection();
         if (!res.ok) throw new Error('status ' + res.status);
         failures = 0;
         onSuccess();
