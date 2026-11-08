@@ -2,12 +2,19 @@
 
 import { HardDrive, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
-import { NAS_SOURCE_KEY, NasCard, NasLibrary, NasType } from '@/lib/nas';
+import {
+  jellyfinItemFromVodId,
+  NAS_SOURCE_KEY,
+  NasCard,
+  NasLibrary,
+  NasType,
+} from '@/lib/nas';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import DoubanCardSkeleton from '@/components/DoubanCardSkeleton';
+import NasPlayChooser from '@/components/NasPlayChooser';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
@@ -29,6 +36,12 @@ function LibraryView({ type }: { type: NasType }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  // 点卡片先选播放方式：Jellyfin（默认）或 NAS 转码（备用）
+  const [chosen, setChosen] = useState<{
+    card: NasCard;
+    href: string;
+  } | null>(null);
+  const closeChooser = useCallback(() => setChosen(null), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -119,6 +132,7 @@ function LibraryView({ type }: { type: NasType }) {
               year={card.vod_year}
               from='search'
               type={type}
+              onOpen={(href) => setChosen({ card, href })}
             />
           </div>
         ))}
@@ -126,6 +140,14 @@ function LibraryView({ type }: { type: NasType }) {
           Array.from({ length: 6 }, (_, i) => <DoubanCardSkeleton key={i} />)}
       </div>
       {errorBox}
+      {chosen && (
+        <NasPlayChooser
+          title={chosen.card.vod_name}
+          jellyfinItem={jellyfinItemFromVodId(chosen.card.vod_id)}
+          fallbackHref={chosen.href}
+          onClose={closeChooser}
+        />
+      )}
       {!loading && !error && page < pagecount && (
         <div className='mt-12 flex justify-center'>
           <button

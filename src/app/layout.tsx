@@ -6,6 +6,7 @@ import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 import { getConfig } from '@/lib/config';
+import { jellyfinBaseUrl, NAS_SOURCE_KEY } from '@/lib/nas';
 import RuntimeConfig from '@/lib/runtime';
 
 import { SiteProvider } from '../components/SiteProvider';
@@ -56,6 +57,7 @@ export default async function RootLayout({
       type: category.type,
       query: category.query,
     })) || ([] as Array<{ name: string; type: 'movie' | 'tv'; query: string }>);
+  let jellyfinUrl = jellyfinBaseUrl(undefined, process.env.JELLYFIN_URL);
   if (
     process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1' &&
     process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'upstash'
@@ -74,6 +76,10 @@ export default async function RootLayout({
       type: category.type,
       query: category.query,
     }));
+    const nasSource = config.SourceConfig.find(
+      (s) => s.key === NAS_SOURCE_KEY && !s.disabled
+    );
+    jellyfinUrl = jellyfinBaseUrl(nasSource?.api, process.env.JELLYFIN_URL);
   }
 
   // 将运行时配置注入到全局 window 对象，供客户端在运行时读取
@@ -84,6 +90,8 @@ export default async function RootLayout({
     DOUBAN_PROXY: doubanProxy,
     DISABLE_YELLOW_FILTER: disableYellowFilter,
     CUSTOM_CATEGORIES: customCategories,
+    // 「我的 NAS」用 Jellyfin 网页版播放
+    JELLYFIN_URL: jellyfinUrl,
   };
 
   return (

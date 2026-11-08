@@ -35,6 +35,8 @@ interface VideoCardProps {
   rate?: string;
   items?: SearchResult[];
   type?: string;
+  /** 设置后点卡片不直接进播放页，而是把播放页地址交给调用方（如「我的 NAS」先选播放方式）。 */
+  onOpen?: (playHref: string) => void;
 }
 
 export default function VideoCard({
@@ -54,6 +56,7 @@ export default function VideoCard({
   rate,
   items,
   type = '',
+  onOpen,
 }: VideoCardProps) {
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
@@ -196,28 +199,29 @@ export default function VideoCard({
   );
 
   const handleClick = useCallback(() => {
+    let href = '';
     if (from === 'douban') {
-      router.push(
-        `/play?title=${encodeURIComponent(actualTitle.trim())}${
-          actualYear ? `&year=${actualYear}` : ''
-        }${actualSearchType ? `&stype=${actualSearchType}` : ''}`
-      );
+      href = `/play?title=${encodeURIComponent(actualTitle.trim())}${
+        actualYear ? `&year=${actualYear}` : ''
+      }${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
     } else if (actualSource && actualId) {
-      router.push(
-        `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
-          actualTitle
-        )}${actualYear ? `&year=${actualYear}` : ''}${
-          isAggregate ? '&prefer=true' : ''
-        }${
-          actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${actualSearchType ? `&stype=${actualSearchType}` : ''}`
-      );
+      href = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
+        actualTitle
+      )}${actualYear ? `&year=${actualYear}` : ''}${
+        isAggregate ? '&prefer=true' : ''
+      }${
+        actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
+      }${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
     }
+    if (!href) return;
+    if (onOpen) onOpen(href);
+    else router.push(href);
   }, [
     from,
     actualSource,
     actualId,
     router,
+    onOpen,
     actualTitle,
     actualYear,
     isAggregate,

@@ -4,7 +4,7 @@
 
 import Artplayer from 'artplayer';
 import Hls from 'hls.js';
-import { Heart } from 'lucide-react';
+import { Heart, MonitorPlay } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
@@ -21,6 +21,13 @@ import {
   saveSkipConfig,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import {
+  jellyfinDetailsUrl,
+  jellyfinItemFromPlayUrl,
+  jellyfinItemFromVodId,
+  NAS_SOURCE_KEY,
+} from '@/lib/nas';
+import { getJellyfinBaseUrl } from '@/lib/nas.client';
 import { r18Query } from '@/lib/r18';
 import { usePlayerBridge } from '@/lib/remote/usePlayerBridge';
 import { SearchResult } from '@/lib/types';
@@ -116,6 +123,9 @@ function PlayPageClient() {
   }, [needPrefer]);
   // 集数相关
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
+  // Jellyfin 地址只在浏览器端读取（window.RUNTIME_CONFIG），避免服务端/客户端渲染不一致
+  const [jellyfinBase, setJellyfinBase] = useState('');
+  useEffect(() => setJellyfinBase(getJellyfinBaseUrl()), []);
 
   const currentSourceRef = useRef(currentSource);
   const currentIdRef = useRef(currentId);
@@ -2033,6 +2043,26 @@ function PlayPageClient() {
                   <FavoriteIcon filled={favorited} />
                 </button>
               </h1>
+
+              {/* 「我的 NAS」：改用 Jellyfin 网页版播放（真字幕轨），本页的转码播放留作备用 */}
+              {currentSource === NAS_SOURCE_KEY &&
+                (() => {
+                  const href = jellyfinDetailsUrl(
+                    jellyfinBase,
+                    jellyfinItemFromPlayUrl(
+                      detail?.episodes?.[currentEpisodeIndex] || ''
+                    ) || jellyfinItemFromVodId(currentId)
+                  );
+                  return href ? (
+                    <a
+                      href={href}
+                      className='mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-base font-semibold text-white shadow hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400'
+                    >
+                      <MonitorPlay className='h-5 w-5' />用 Jellyfin
+                      播放（可选中文字幕）
+                    </a>
+                  ) : null;
+                })()}
 
               {/* 关键信息行 */}
               <div className='flex flex-wrap items-center gap-3 text-base mb-4 opacity-80 flex-shrink-0'>

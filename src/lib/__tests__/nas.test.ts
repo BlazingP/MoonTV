@@ -1,4 +1,8 @@
 import {
+  jellyfinBaseUrl,
+  jellyfinDetailsUrl,
+  jellyfinItemFromPlayUrl,
+  jellyfinItemFromVodId,
   NasInputError,
   nasLibraryUrl,
   parseNasQuery,
@@ -104,5 +108,69 @@ describe('sanitizeLibrary', () => {
       total: 0,
       list: [],
     });
+  });
+});
+
+describe('Jellyfin links', () => {
+  const ITEM = 'ccade8fba5c51a4dc595d7e75828a2ea';
+  const token = (body: unknown) =>
+    Buffer.concat([Buffer.alloc(32, 7), Buffer.from(JSON.stringify(body))])
+      .toString('base64url')
+      .replace(/=+$/, '');
+  const playUrl = (body: unknown) =>
+    `http://192.168.0.96:8095/play/${token(body)}.m3u8`;
+
+  test('derives Jellyfin from the nas-bridge host', () => {
+    expect(
+      jellyfinBaseUrl('http://192.168.0.96:8095/api.php/provide/vod')
+    ).toBe('http://192.168.0.96:8096');
+  });
+
+  test('JELLYFIN_URL wins and loses its trailing slash', () => {
+    expect(
+      jellyfinBaseUrl(
+        'http://192.168.0.96:8095/api.php/provide/vod',
+        'http://nas.local:8096/jf/'
+      )
+    ).toBe('http://nas.local:8096/jf');
+  });
+
+  test.each([
+    [undefined, undefined],
+    ['not a url', undefined],
+    ['http://192.168.0.96:9000/api.php/provide/vod', undefined],
+    ['http://192.168.0.96:8095/api.php/provide/vod', 'javascript:alert(1)'],
+  ])('gives no Jellyfin address for %s / %s', (api, override) => {
+    expect(jellyfinBaseUrl(api, override)).toBe('');
+  });
+
+  test('reads the item id from a nas-bridge play link', () => {
+    expect(jellyfinItemFromPlayUrl(playUrl({ kind: 'play', item: ITEM }))).toBe(
+      ITEM
+    );
+  });
+
+  test.each([
+    '',
+    'http://example.com/video.m3u8',
+    playUrl({ kind: 'media', item: ITEM }),
+    playUrl({ kind: 'play', item: '../admin' }),
+    'http://192.168.0.96:8095/play/@@@.m3u8',
+  ])('ignores %s', (url) => {
+    expect(jellyfinItemFromPlayUrl(url)).toBe('');
+  });
+
+  test('maps cards to the movie or the season', () => {
+    expect(jellyfinItemFromVodId(MOVIE)).toBe('a'.repeat(32));
+    expect(jellyfinItemFromVodId(SEASON)).toBe('c'.repeat(32));
+    expect(jellyfinItemFromVodId('m.xyz')).toBe('');
+  });
+
+  test('builds the details page link', () => {
+    expect(jellyfinDetailsUrl('http://192.168.0.96:8096', ITEM)).toBe(
+      `http://192.168.0.96:8096/web/#/details?id=${ITEM}`
+    );
+    expect(jellyfinDetailsUrl('', ITEM)).toBe('');
+    expect(jellyfinDetailsUrl('http://x', 'nope')).toBe('');
   });
 });
