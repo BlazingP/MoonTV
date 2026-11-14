@@ -53,6 +53,8 @@
     document.getElementById('save').addEventListener('click', save);
     // 输入法里按“前往/完成”直接保存
     document.getElementById('addr').addEventListener('keydown', function (e) {
+      // 输入法还在选字时的回车不算（中文、日文输入法）
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === 'Enter') save();
     });
   })();
